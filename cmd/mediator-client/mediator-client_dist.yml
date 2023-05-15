@@ -1,0 +1,4 @@
+configuration:
+  backend_url: https://BACKEND_IP_OR_FQDN/v1/otp/mediatorscript
+  logfile: /var/log/mediator-client.log
+  ssl_skip_verify: false

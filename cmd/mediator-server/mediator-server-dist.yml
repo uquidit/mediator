@@ -1,0 +1,23 @@
+server:
+  host: 127.0.0.1
+  port: 443
+  secret: EnterYourSecretHere
+
+  ssl:
+    enabled: [true|false]
+    certificate: /opt/uquidit.co/conf/ssl.crt
+    key: /opt/uquidit.co/conf/ssl.key
+
+  # The backend can log to specific files, or to stdout/stderr using "-"
+  log:
+    # Routing logs
+    access: /opt/uquidit.co/log/uqtu_be.access.log
+    # Execution messages
+    error: /opt/uquidit.co/log/uqtu_be.execution.log
+
+# Manage scripts available to the Mediatorscript
+# Feature used in TOS Aurora
+mediatorscript:
+  # File used as data storage
+  # Created if it does not exist - fails if unable to read or write
+  scriptstorage: /opt/uquidit.co/data/uqtu_be/ms_scripts.json

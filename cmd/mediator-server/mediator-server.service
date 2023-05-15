@@ -1,0 +1,14 @@
+[Unit]
+Description=MEdiator Backend Server
+AssertPathExists=/opt/mediator/bin/
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/mediator/bin/mediator-server /opt/mediator/conf/mediator-server.yml
+WorkingDirectory=/opt/mediator/data/
+User=tufin-admin
+Group=tufin-admin
+
+[Install]
+WantedBy=multi-user.target
