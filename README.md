@@ -167,7 +167,7 @@ We suggest that you install it in the same folder as the server but it is not a 
 Example: The following command will return the list of available commands:
 
 ```
-$ /opt/airbus/bin/mediator-cli --url=http://xxx/v1/otp --help
+$ /opt/mediator/bin/mediator-cli --url=http://xxx/v1/otp --help
 
 This CLI provides commands to manage scripts used by Mediator back-end. It includes:
 
