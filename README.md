@@ -20,7 +20,7 @@ The solution is to deploy only a very small, self-contained executable on the po
 
 The following diagram illustrates the interactions of the different elements involved.
 
-![Architecture overview](mediator_client_and_server.png)
+![Architecture overview](mediator_client_and_server_.png)
 
 # Build
 
