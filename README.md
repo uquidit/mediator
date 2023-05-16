@@ -6,11 +6,12 @@ uQuidIT provides this mediator script system to customize your workflow in Tufin
 
 ## General purpose
 
-This system allows you to execute any external script to process your Securechange tickets. It is a convenient solution o use your legacy scripts developed for TOS Classic in an Aurora environment. 
+This system allows you to execute any external script to process your Securechange tickets. It is a convenient solution to use your legacy scripts developed for TOS Classic in an Aurora environment. 
 
 These scripts will be executed on the main node instead of the Securechange pod, providing extra flexibility.
 
 We assume you are familiar with Tufin Securechange and know how to configure it.
+
 ## Architecture overview
 
 The main difficulty to overcome is that in the TOS Classic architecture, scripts are executed on the machine where SecureChange runs while in the TOS Aurora architecture, those scripts are supposed to run on a Kubernetes pod, which is very limited.
@@ -20,6 +21,7 @@ The solution is to deploy only a very small, self-contained executable on the po
 The following diagram illustrates the interactions of the different elements involved.
 
 ![Architecture overview](mediator_client_and_server.png)
+
 # Build
 
 ## Get the code
@@ -27,7 +29,8 @@ The following diagram illustrates the interactions of the different elements inv
 You need to download the source code to build the executable file. 
 
 To do so, clone our Github repository:
-`git clone https://github.com/uquidit/mediator.git`
+`$ git clone https://github.com/uquidit/mediator.git`
+
 ## Get Golang
 
 You need Golang installed so you can build the binaries. Follow [this procedure](https://go.dev/doc/install) from the [go.dev](go.dev) web site.
@@ -45,7 +48,6 @@ You can compile them by going to their respective directories and run the `go bu
 * `mediator-server`  => `mediator/cmd/mediator-server`
 * `mediator-cli`     => `mediator/cmd/mediator-cli`
 
-
 ### Set encryption keys
 
 If you use mediator in production environment, you must change the following encryption keys:
@@ -59,18 +61,18 @@ And the One-Time password algorithm uses 2 in `totp` package:
 * `secretMS1`
 * `secretMS2`
 
-
 They can all be set at build time using the `--ldflags` build flag with the `-X` command: 
 `--ldflags="-X '<project name>/<package name>.<variable name>=<string value>'"`
 
 Example:
+
 ```sh
 $ go build --ldflags="\
 -X 'uqtu/mediator/mediatorscript.salt=Hello' \
 -X 'uqtu/mediator/mediatorscript.pepper=World' \
 -X 'uqtu/mediator/mediatorscript.secretKey=ThisIsMySecret' \
--X 'uqtu/mediator/totp.secretMS1=Hello' \
--X 'uqtu/mediator/totp.secretMS2=World' \
+-X 'uqtu/mediator/totp.secretMS1=Lorem' \
+-X 'uqtu/mediator/totp.secretMS2=Ipsum' \
 " .
 ```
 
@@ -83,7 +85,6 @@ Mediator executables must be installed on your server.
 ## Mediator-server
 
 ### Files
-
 
 The `mediator-server` is composed of 3 files:
 
@@ -106,7 +107,6 @@ Follow these steps to configure the `mediator-server`:
 
 ### Installation
 
-
 1. Create the following destination folders on your server and make sure they are read and writeable for the user that will run `mediator-server` (likely to be the `tufin-admin` user)
    * `/opt/mediator/conf`
    * `/opt/mediator/bin`
@@ -116,10 +116,9 @@ Follow these steps to configure the `mediator-server`:
 
 ### Start `mediator-server`
 
-When the `mediator-server` binary file is installed and when it is update, it is required to grant a special capability (to bind on privileged ports). Run the following command:
+If you want the `mediator-server` to bind on a privileged port, it's necessary to grant the related special capability to it's binary file. This must be done after each installation as well as update. Run the following command:
 
 `$ sudo setcap 'cap_net_bind_service=+ep' /opt/mediator/bin/mediator-server`
-
 
 `mediator-server` expects the full path to its configuration file as the only argument.
 
@@ -145,6 +144,7 @@ $ sudo systemctl enable mediator-server.service
 ```
 
 You can check the service is enabled:
+
 ```
 $ sudo systemctl is-enabled mediator-server.service
 enabled
@@ -159,12 +159,11 @@ You can manage your service with the following commands:
 
 ### Command-line interface
 
-
 The command-line interface is a convenient utility to easily interact with the mediator server. In order to use it, you need to provide the URL the mediator server listens to as the command line utility has no configuration file.
 
 We suggest that you install it in the same folder as the server but it is not a requirement. In the following section, we will assume this is the case.
 
-Example: The following command will return the list of available commands:
+For instance, the following command will return the list of available commands:
 
 ```
 $ /opt/mediator/bin/mediator-cli --url=http://xxx/v1/otp --help
@@ -196,46 +195,43 @@ Use "mediator [command] --help" for more information about a command.
 
 The `--help` flag will always give you tips about how to use the CLI. 
 
-
 A help message is available for all commands and subcommands. 
 
 An alias may come handy when using the CLI so you don’t have to type the long server URL every time. There are different ways to do so, here is one of them using the alias command:
 
 ```
-$ alias mediator="/opt/mediator/bin/mediator-cli --url=http://xxx/v1/otp
+$ alias mediator="/opt/mediator/bin/mediator-cli --url=http://xxx/v1/otp"
 ```
 
 In the following sections, we will use this alias in the commands we provide.
 
 ### Final configuration: script registration
 
-
-`mediator-client` will request `mediator-server` to run some scripts when a ticket is processed under Securechange. However only a restricted number of scripts can be run by the server and they all need to be registered. We will use `mediator-cli` for that purpose. 
+`mediator-client` will request `mediator-server` to run some scripts when a ticket is processed under Securechange. Those scripts must explicitely be registered to the `mediator-server`. We will use `mediator-cli` for that purpose. 
 
 4 different types of scripts can be used:
 
 * **Trigger Scripts:**
-  -  mediator-client is called when a workflow action is triggered. For instance, when a ticket advances or is submitted.
-  - It will  request the execution of any Trigger Script attached to the workflow step the ticket will be in.
-  - Mediator supports use of multiple trigger scripts so you can use different scripts to interact with your tickets.
+  - `mediator-client` can be called when a workflow action is triggered. For instance, when a ticket advances or is submitted.
+  - It will request the execution of any Trigger Script attached to the workflow step the ticket is in.
+  - Mediator supports use of multiple Trigger Scripts so you can use different scripts to interact with your tickets at different steps of different workflows.
   - You can only attach one Trigger Script to a workflow step.
-  -They are run asynchronously
-  -You can manage them using the mediator scripts trigger command and subcommands
+  - They run asynchronously
+  - You can manage them using the `mediator scripts trigger` command and subcommands
 
 * **“interactive” scripts**
   - They are 3 of them:
     - Scripted Condition scripts
     - Scripted Task scripts
     - Pre-Assignment scripts
-  - mediator-client can be called when a ticket is in a step where scripted conditions / tasks or pre-assignment is required
+  - `mediator-client` can be called when a ticket is in a step where a _scripted condition_, a _scripted task_ or _pre-assignment_ is required
   - It will  request the execution of any registered script of the corresponding type.
   - Only one script of each type can be registered on the server.
-  - They are run synchronously
-  - You can manage them using the corresponding command in the list below:
+  - They run synchronously
+  - You can manage them using the corresponding command and subcommands:
     - `mediator scripts condition [...]`
     - `mediator scripts task [...]`
     - `mediator scripts assignment [...]`
-
 
 The commands `mediator scripts [trigger|condition|task|assignment]` all offer 4 subcommands:
 * `refresh`
@@ -246,12 +242,15 @@ The commands `mediator scripts [trigger|condition|task|assignment]` all offer 4 
 All these subcommands work the same way regardless of the type of script.
 
 All the scripts need to be registered before they can be executed by the server. You can use the following command for that purpose:
+
 ```
 mediator scripts [trigger|condition|task|assignment] register
 ```
+
 The command requires the script path as a unique argument. 
 
-Example: Run the following command to register the “run.sh” script as a Trigger Script:
+For instance, to register the “run.sh” script as a Trigger Script:
+
 ```
 $ mediator scripts trigger register /path/to/script/run.sh
 ```
@@ -261,16 +260,17 @@ A new Trigger script named "run.sh" has been registered and linked to file `/pat
 All the scripts are registered under a name. This name must be unique in the script database. By default, the mediator will use the script file name as a name. However, you can provide a custom name using the `--name` flag.
 
 Example:
+
 ```
 $ mediator scripts trigger register /path/to/scripts/my-script.py --name MyScript
 ```
 
 A new Trigger script named "MyScript" has been registered and linked to file `/path/to/scripts/my-script.py`
 
-Script registration names are useful for trigger scripts. You will need the script name when you will attach it to a workflow step in `mediator-client` configuration.
+Script registration names are useful for trigger scripts. You will need the script name when you attach it to a workflow step in `mediator-client` configuration.
 
+Check the scripts have been properly registered using the following command:
 
-Check the scripts have been properly registered this way: 
 ```
 $ mediator scripts trigger 
 Nb of Trigger script: 2
@@ -279,6 +279,7 @@ Nb of Trigger script: 2
 ```
 
 You can unregister a script with the `unregister` command:
+
 ```
 $ mediator scripts trigger unregister MyScript
 Script 'MyScript' has been unregistered.
@@ -290,9 +291,8 @@ Nb of Trigger script: 1
 
 You can also unregister all the scripts of a given type by using the `unregister` subcommand with no argument
 
-
-
 For security reasons, the server will not run a script that has been modified after it has been registered. If you do need to update a registered script, please run the following command after the script has been modified:
+
 ```
 $ mediator script trigger refresh run.sh
 Script ‘run.sh’ has been refreshed
@@ -303,6 +303,7 @@ All the subcommands described above are available for the other script types. Ju
 Top-level subcommands are also available. They will operate on all scripts, regardless of their type. Use the `--help` flag for more information.
 
 ## Mediator-client
+
 ### Configuration
 
 The configuration file of `mediator-client` includes information about how it should connect to `mediator-server` and also about the scripts that need to be executed when a script reaches a particular step of a workflow.
