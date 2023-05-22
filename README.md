@@ -2,7 +2,7 @@
 
 # Context
 
-uQuidIT provides this mediator script system to customize your workflow in Tufin TOS Aurora.
+uQuidIT.co provides this mediator script system to customize your workflow in Tufin TOS Aurora.
 
 ## General purpose
 
@@ -29,7 +29,8 @@ The following diagram illustrates the interactions of the different elements inv
 You need to download the source code to build the executable file. 
 
 To do so, clone our Github repository:
-`$ git clone https://github.com/uquidit/mediator.git`
+`$ git clone https://github.com/
+it/mediator.git`
 
 ## Get Golang
 
