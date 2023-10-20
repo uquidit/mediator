@@ -7,16 +7,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
-
-type SyncRunResponse struct {
-	statusCode int
-	Error      string     `json:"error"`
-	ExitCode   int        `json:"exitcode"`
-	StdOut     string     `json:"stdout"`
-	StdErr     string     `json:"stderr"`
-	Type       ScriptType `json:"type"`
-}
 
 // execute special script
 // this function will only return an error if
@@ -25,52 +17,38 @@ type SyncRunResponse struct {
 // when the script fails, it will return an OK result
 // script error will be in response body.
 // it's the caller responsibility to check if run was ok
-func genericHandler(t ScriptType, arg string, c echo.Context) error {
-	var (
-		res SyncRunResponse
-	)
+func genericHandler(t ScriptType, arg string, rr *RunResponse, c echo.Context) {
+
+	if rr.RunResults == nil {
+		rr.RunResults = make(SyncRunResponsesMap)
+	}
 
 	if l := GetScriptByType(t); len(l) == 0 {
-		res.statusCode = http.StatusBadRequest
-		res.Error = fmt.Sprintf("%s script was not found: register it and try again", t)
+		rr.statusCode = http.StatusBadRequest
+		rr.err = fmt.Errorf("%s script was not found: register it and try again", t)
 
 	} else if len(l) > 1 {
-		res.statusCode = http.StatusBadRequest
-		res.Error = fmt.Sprintf("too many %s scripts have been found: make sure only one is registered and try again", t)
+		rr.statusCode = http.StatusBadRequest
+		rr.err = fmt.Errorf("too many %s scripts have been found: make sure only one is registered and try again", t)
 
 	} else {
 		script := l[0]
 
-		logger.Infof("Executing synchronously %s '%s' with arg '%s'", script.Type, script.Fullpath, arg)
+		logrus.Infof("Executing synchronously %s '%s' with arg '%s'", script.Type, script.Fullpath, arg)
 
 		if req := c.Request(); req == nil {
-			res.statusCode = http.StatusInternalServerError
-			res.Error = "no request"
+			rr.statusCode = http.StatusInternalServerError
+			rr.err = ErrNoRequest
 
 		} else if b, err := io.ReadAll(req.Body); err != nil {
-			res.statusCode = http.StatusBadRequest
-			res.Error = fmt.Sprintf("cannot read request body: %v", err)
-
-		} else if stdout, stderr, err := script.SyncRun(b, arg); err != nil {
-
-			if errorIsScriptFailure(err) {
-				// script failure. not an internal error so return OK status
-				res.statusCode = http.StatusOK
-				res.Error = err.Error()
-				res.ExitCode = getExitCodeFromError(err)
-				res.StdOut = stdout
-				res.StdErr = stderr
-			} else {
-				//error is not a script failure
-				res.statusCode = http.StatusInternalServerError
-				res.Error = err.Error()
-			}
+			rr.statusCode = http.StatusBadRequest
+			rr.err = fmt.Errorf("cannot read request body: %v", err)
 
 		} else {
-			res.statusCode = http.StatusOK
-			res.StdOut = stdout
+			// execute script and store results in map
+			rr.RunResults[script.Name] = script.SyncRun(b, arg)
+
 		}
 	}
 
-	return c.JSON(res.statusCode, res)
 }

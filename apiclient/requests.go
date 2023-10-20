@@ -20,6 +20,10 @@ type Request struct {
 	content    string
 }
 
+func (req *Request) AddCookie(cookie *http.Cookie) {
+	req.httpreq.AddCookie(cookie)
+}
+
 func (req *Request) SetHeader(key string, value string) {
 	req.httpreq.Header.Set(key, value)
 }
@@ -88,8 +92,8 @@ func (req *Request) RunWithoutDecode() (io.ReadCloser, error) {
 	}
 
 	req.StatusCode = req.response.StatusCode
-	switch req.StatusCode {
-	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
+	switch {
+	case req.StatusCode >= 200 && req.StatusCode < 300:
 		//get JSESSIONID cookie
 		for _, cookie := range req.response.Cookies() {
 			if cookie.Name == "JSESSIONID" {

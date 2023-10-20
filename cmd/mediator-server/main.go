@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 
@@ -13,6 +12,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 // @title UQTU Back-end API
@@ -48,32 +48,28 @@ func main() {
 	}
 
 	if flag.NArg() != 1 {
-		log.Fatalf("WRONG NUMBER OF ARGUMENTS: 1 expected, got %d: %v", flag.NArg(), flag.Args())
+		logrus.Fatalf("WRONG NUMBER OF ARGUMENTS: 1 expected, got %d: %v", flag.NArg(), flag.Args())
 	}
 	fmt.Printf("Reading configuration file %s\n", flag.Arg(0))
 	if err := ReadConfFromFile(flag.Arg(0)); err != nil {
-		log.Fatalf("ERROR while reading configuration file %s: %v", flag.Arg(0), err)
+		logrus.Fatalf("ERROR while reading configuration file %s: %v", flag.Arg(0), err)
 	}
 
 	// init traditional logger
 	if Configuration.Server.Log.Error == "" || Configuration.Server.Log.Error == "-" {
-		if err := logger.InitFullPath("", true, false, true); err != nil {
-			log.Fatalf("error while initializing logger: %v", err)
+		if err := logger.InitAppLogger(logrus.WarnLevel, true, false, false, true, false, true, "", ""); err != nil {
+			logrus.Fatalf("error while initializing logger: %v", err)
 		}
 	} else {
-		if err := logger.InitFullPath(Configuration.Server.Log.Error, true, true, false); err != nil {
-			log.Fatalf("error while initializing logger: %v", err)
+		if err := logger.InitAppLogger(logrus.WarnLevel, false, true, false, true, true, true, "", Configuration.Server.Log.Error); err != nil {
+			logrus.Fatalf("error while initializing logger: %v", err)
 		}
 	}
+	defer logger.CloseLogFile()
 
 	// initialize mediatorscript logger with rootlogger so all logs will go to the same location
-	if rootlogger, err := logger.GetRootFileStdoutLogger(); err != nil {
-		log.Fatalf("error while getting root logger: %v", err)
-	} else if err := mediatorscript.Init(
-		Configuration.Mediatorscript.ScriptStorage,
-		rootlogger,
-	); err != nil {
-		logger.Warningf("error while loading scripts for mediator list: %v", err)
+	if err := mediatorscript.Init(Configuration.Mediatorscript.ScriptStorage); err != nil {
+		logrus.Warningf("error while loading scripts for mediator list: %v", err)
 	}
 
 	// Echo instance
@@ -90,7 +86,7 @@ func main() {
 	} else {
 		logfile, err := os.OpenFile(Configuration.Server.Log.Access, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			logger.Errorf("error while opening logfile '%s': %v", Configuration.Server.Log.Access, err)
+			logrus.Fatalf("error while opening logfile '%s': %v", Configuration.Server.Log.Access, err)
 		}
 		defer logfile.Close()
 
@@ -122,14 +118,14 @@ func main() {
 	listen_address := fmt.Sprintf("%s:%d", Configuration.Server.Host, Configuration.Server.Port)
 	if Configuration.Server.Ssl.Enabled {
 		if Configuration.Server.Ssl.Certificate == "" {
-			e.Logger.Fatal("cannot start server using SSL: empty certificate")
+			logrus.Fatal("cannot start server using SSL: empty certificate")
 		}
 		if Configuration.Server.Ssl.Key == "" {
-			e.Logger.Fatal("cannot start server using SSL: empty key")
+			logrus.Fatal("cannot start server using SSL: empty key")
 		}
-		e.Logger.Fatal(e.StartTLS(listen_address, Configuration.Server.Ssl.Certificate, Configuration.Server.Ssl.Key))
+		logrus.Fatal(e.StartTLS(listen_address, Configuration.Server.Ssl.Certificate, Configuration.Server.Ssl.Key))
 	} else {
-		e.Logger.Fatal(e.Start(listen_address))
+		logrus.Fatal(e.Start(listen_address))
 	}
 }
 

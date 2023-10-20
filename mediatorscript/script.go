@@ -6,10 +6,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Script struct {
@@ -24,7 +25,6 @@ type ScriptList []*Script
 var (
 	allScripts map[string]*Script
 	filename   string
-	logger     MsLogger
 )
 
 func GetScriptByName(name string) (*Script, error) {
@@ -115,7 +115,7 @@ func (s *Script) Save() error {
 }
 func (s *Script) Refresh() error {
 	var err error
-	logger.Infof("Refreshing %s", s)
+	logrus.Infof("Refreshing %s", s)
 	if s.Hash, err = s.computeHash(); err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (s *Script) Refresh() error {
 
 func safeAdd(name string, item *Script) error {
 	if _, exist := allScripts[name]; exist {
-		return fmt.Errorf("script '%s' already exist in list", name)
+		return fmt.Errorf("%w: %s", ErrRegisterAlreadyExist, name)
 
 	} else if item.Type == ScriptTrigger || IsEmpty(item.Type) {
 		// we can have several trigger scripts but only one of the other type
@@ -144,17 +144,17 @@ func save() error {
 	// marshall list into JSON
 	if content, err := json.MarshalIndent(allScripts, "", " "); err != nil {
 		return err
-	} else {
-		// save string to file
-		return os.WriteFile(filename, content, 0644)
+	} else if err := os.WriteFile(filename, content, 0644); err != nil { // save string to file
+		return fmt.Errorf("%w: '%s'", err, filename)
 	}
+	return nil
 }
 
 func (s *Script) checkHash() error {
 	if hash, err := s.computeHash(); err != nil {
 		return err
 	} else if !hmac.Equal(hash, s.Hash) {
-		return fmt.Errorf("script hash does not match for %s script %s (%s)", s.Type, s.Name, s.Fullpath)
+		return fmt.Errorf("%w for %s script %s (%s)", ErrHashMismatch, s.Type, s.Name, s.Fullpath)
 	}
 	return nil
 }
@@ -168,7 +168,7 @@ func (s *Script) AsyncRun(ti *TicketInfo) error {
 		if data, err := xml.Marshal(ti); err != nil {
 			return err
 		} else {
-			logger.Infof("running script %s (%s) with data: %s", s.Name, s.Fullpath, data)
+			logrus.Infof("running script %s (%s) with data: %s", s.Name, s.Fullpath, data)
 			go f(data, "")
 		}
 
@@ -178,51 +178,51 @@ func (s *Script) AsyncRun(ti *TicketInfo) error {
 }
 
 // Run script in test mode
-// return two error values:
-// * first is any error returned by the script
-// * second is any error occuring in that function
-// So:
-// - if first error is not nil, test failed
-// - if second is not nil, run failed
+
 func (s *Script) Test() *SyncRunResponse {
+
+	input := []byte("<ticket_info/>")
+	arg := ""
+	if s.Type == ScriptCondition || s.Type == ScriptTask {
+		arg = "test"
+	}
+
+	return s.execute(input, arg)
+}
+
+// Execute a script synchronously with given arg.
+// Return a SyncRunResponse struct with outputs.
+// We make a difference between script errors and internal errors
+func (s *Script) execute(input []byte, arg string) *SyncRunResponse {
 	var (
-		res    SyncRunResponse
-		stdout string
-		stderr string
-		err    error
+		res SyncRunResponse
+		err error
 	)
+
 	res.Type = s.Type
 
-	if err = s.checkHash(); err != nil {
-		res.statusCode = http.StatusForbidden
+	if res.internalError = s.checkHash(); res.internalError != nil {
+		return &res
+	}
 
-	} else {
-		f := s.getRunFunction()
-		input := []byte("<ticket_info/>")
-		arg := ""
-		if s.Type == ScriptCondition || s.Type == ScriptTask {
-			arg = "test"
-		}
-		if stdout, stderr, err = f(input, arg); err == nil {
-			res.statusCode = http.StatusOK
-			res.StdOut = stdout
+	// get function to run
+	f := s.getRunFunction()
 
-		} else if errorIsScriptFailure(err) {
-			// script failure. not an internal error so return OK status
-			res.statusCode = http.StatusOK
+	// run script
+	res.StdOut, res.StdErr, err = f(input, arg)
+
+	if err != nil {
+		if errorIsScriptFailure(err) {
+			// script failure. not an internal error
 			res.ExitCode = getExitCodeFromError(err)
-			res.StdOut = stdout
-			res.StdErr = stderr
+			res.scriptError = err
 
 		} else {
 			//error is not a script failure
-			res.statusCode = http.StatusInternalServerError
-
+			res.internalError = err
 		}
 	}
-	if err != nil {
-		res.Error = err.Error()
-	}
+
 	return &res
 }
 
@@ -253,13 +253,13 @@ func (s *Script) getRunFunction() func([]byte, string) (string, string, error) {
 		cmd.Stderr = &stderr
 
 		// start the script
-		logger.Infof("Starting %s", s)
+		logrus.Infof("Starting %s", s)
 		if err := cmd.Start(); err != nil {
 			out := strings.TrimSpace(stdout.String())
 			er := strings.TrimSpace(stderr.String())
-			logger.Warningf("stdout: %s", out)
-			logger.Warningf("stderr: %s", er)
-			logger.Warningf("err: %v", err)
+			logrus.Warningf("stdout: %s", out)
+			logrus.Warningf("stderr: %s", er)
+			logrus.Warningf("err: %v", err)
 			return out, er, err
 		}
 
@@ -267,9 +267,9 @@ func (s *Script) getRunFunction() func([]byte, string) (string, string, error) {
 		if _, err := stdin.Write(input); err != nil {
 			out := strings.TrimSpace(stdout.String())
 			er := strings.TrimSpace(stderr.String())
-			logger.Warningf("stdout: %s", stdout.String())
-			logger.Warningf("stderr: %s", stderr.String())
-			logger.Warningf("err: %v", err)
+			logrus.Warningf("stdout: %s", stdout.String())
+			logrus.Warningf("stderr: %s", stderr.String())
+			logrus.Warningf("err: %v", err)
 			return out, er, err
 		}
 
@@ -277,38 +277,33 @@ func (s *Script) getRunFunction() func([]byte, string) (string, string, error) {
 		if err := stdin.Close(); err != nil {
 			out := strings.TrimSpace(stdout.String())
 			er := strings.TrimSpace(stderr.String())
-			logger.Warningf("stdout: %s", stdout.String())
-			logger.Warningf("stderr: %s", stderr.String())
-			logger.Warningf("err: %v", err)
+			logrus.Warningf("stdout: %s", stdout.String())
+			logrus.Warningf("stderr: %s", stderr.String())
+			logrus.Warningf("err: %v", err)
 			return out, er, err
 		}
 
 		if err := cmd.Wait(); err != nil {
 			out := strings.TrimSpace(stdout.String())
 			er := strings.TrimSpace(stderr.String())
-			logger.Warningf("stdout: %s", stdout.String())
-			logger.Warningf("stderr: %s", stderr.String())
-			logger.Warningf("err: %v", err)
+			logrus.Warningf("stdout: %s", stdout.String())
+			logrus.Warningf("stderr: %s", stderr.String())
+			logrus.Warningf("err: %v", err)
 			return out, er, err
 		}
 
 		out := strings.TrimSpace(stdout.String())
 		er := strings.TrimSpace(stderr.String())
-		logger.Infof("script %s was run successfully", s.Fullpath)
-		logger.Infof("stdout: %s", stdout.String())
-		logger.Infof("stderr: %s", stderr.String())
+		logrus.Infof("script %s was run successfully", s.Fullpath)
+		logrus.Infof("stdout: %s", stdout.String())
+		logrus.Infof("stderr: %s", stderr.String())
 		return out, er, nil
 	}
 }
 
-func (s *Script) SyncRun(input []byte, arg string) (string, string, error) {
-	if err := s.checkHash(); err != nil {
-		return "", "", err
-	}
+func (s *Script) SyncRun(input []byte, arg string) *SyncRunResponse {
 	if s.Type == ScriptTrigger {
-		logger.Warningf("Trigger Script '%s' is run synchronously. Such scripts are usually run asynchronously.")
+		logrus.Warningf("Trigger Script '%s' is run synchronously. Such scripts are usually run asynchronously.", string(input))
 	}
-
-	f := s.getRunFunction()
-	return f(input, arg)
+	return s.execute(input, arg)
 }

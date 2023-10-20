@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
-
 	"uqtu/mediator/configparser"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Configurations struct {
@@ -39,7 +39,7 @@ var Configuration Configurations
 func ReadConf(config_name string, verbose bool) {
 	configparser.Verbose = verbose
 	if err := configparser.ReadConf(config_name, &Configuration, nil); err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		logrus.Fatalf("Unable to decode into struct, %v", err)
 	}
 
 }

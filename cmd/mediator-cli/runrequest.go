@@ -27,7 +27,11 @@ func (cr ClientRequester) RunGETwithToken(url string, content string, v any) (io
 	if cr.client == nil {
 		return nil, fmt.Errorf("no API client")
 	}
-	cr.client.Token = totp.GetKey()
+
+	var err error
+	if cr.client.Token, err = totp.GetKey(); err != nil {
+		return nil, err
+	}
 
 	if r, err := cr.client.NewGETwithToken(url, content); err != nil {
 		return nil, err
@@ -47,7 +51,10 @@ func (cr *ClientRequester) RunPOSTwithToken(url string, body io.Reader, content 
 	if cr.client == nil {
 		return nil, fmt.Errorf("no API client")
 	}
-	cr.client.Token = totp.GetKey()
+	var err error
+	if cr.client.Token, err = totp.GetKey(); err != nil {
+		return nil, err
+	}
 
 	if r, err := cr.client.NewPOSTwithToken(url, body, content); err != nil {
 		return nil, err
@@ -67,7 +74,10 @@ func (cr *ClientRequester) RunDELETEwithToken(url string, content string, v any)
 	if cr.client == nil {
 		return nil, fmt.Errorf("no API client")
 	}
-	cr.client.Token = totp.GetKey()
+	var err error
+	if cr.client.Token, err = totp.GetKey(); err != nil {
+		return nil, err
+	}
 
 	if r, err := cr.client.NewDELETEwithToken(url, content); err != nil {
 		return nil, err
@@ -84,6 +94,9 @@ func (cr *ClientRequester) RunDELETEwithToken(url string, content string, v any)
 }
 
 func getError(r io.ReadCloser, err error) error {
+	if r == nil {
+		return err
+	}
 	defer r.Close()
 	data, _ := io.ReadAll(r)
 	return fmt.Errorf("%w: %s", err, string(data))

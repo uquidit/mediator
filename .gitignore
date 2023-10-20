@@ -11,3 +11,9 @@ cmd/mediator-client/uquidit_mediator.log
 cmd/mediator-cli/mediator-client.yml
 
 .vscode/*
+cmd/mediator-server/copy2log.log
+cmd/mediator-client/mediator-client.log
+cmd/mediator-client/ticket_test.txt
+cmd/mediator-client/mediator-client.json
+
+*.exe

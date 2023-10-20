@@ -119,8 +119,8 @@ If provided, a default script will be associated to all the steps.
 func init() {
 	rootCmd.AddCommand(generateConfigCmd)
 
-	generateConfigCmd.Flags().StringVar(&username, "username", "", "SecureChange user name")
-	generateConfigCmd.Flags().StringVar(&pwd, "password", "", "SecureChange password")
+	generateConfigCmd.Flags().StringVar(&username, "username", "", "SecureChange user name. Will be prompted if not provided.")
+	generateConfigCmd.Flags().StringVar(&pwd, "password", "", "SecureChange password. Will be prompted if not provided.")
 	generateConfigCmd.Flags().StringVar(&script, "script", "", "Default script name. Used for all steps of all workflows")
-	generateConfigCmd.Flags().StringVar(&conf_filename, "output", "mediator-client.yml", "Default script name. Used for all steps of all workflows")
+	generateConfigCmd.Flags().StringVar(&conf_filename, "output", "mediator-client.yml", "Name or path of file where generated configuration will be dumped.")
 }

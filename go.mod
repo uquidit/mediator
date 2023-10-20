@@ -1,6 +1,6 @@
 module uqtu/mediator
 
-go 1.19
+go 1.21
 
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -33,6 +33,8 @@ require (
 )
 
 require github.com/spf13/cobra v1.7.0
+
+require github.com/sirupsen/logrus v1.9.3
 
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect

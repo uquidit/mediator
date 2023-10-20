@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"uqtu/mediator/totp"
 )
 
 type Client struct {
@@ -40,6 +41,17 @@ func NewClient(urlprefix string, username string, password string, InsecureSkipV
 	return &c
 }
 
+func NewClientWithOTP(urlprefix string, InsecureSkipVerify bool) (*Client, error) {
+
+	client := NewClient(urlprefix, "", "", InsecureSkipVerify)
+
+	var err error
+	if client.Token, err = totp.GetKey(); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
 /****** GET ******/
 
 func (c *Client) NewGET(url string, content string) (*Request, error) {
@@ -66,6 +78,9 @@ func (c *Client) NewPOST(url string, body io.Reader, content string) (*Request, 
 
 func (c *Client) NewPOSTwithToken(url string, body io.Reader, content string) (*Request, error) {
 	return c.newWithBody("POST", url, body, content, AuthMode_Token)
+}
+func (c *Client) NewPOSTwithCookie(url string, body io.Reader, content string) (*Request, error) {
+	return c.newWithBody("POST", url, body, content, AuthMode_Cookie)
 }
 
 func (c *Client) NewPOSTwithBasicAuth(url string, body io.Reader, content string) (*Request, error) {
@@ -179,7 +194,10 @@ func (c *Client) newWithBody(method string, url_suffix string, body io.Reader, c
 			req.SetHeader("Content-Type", "application/json")
 		} else {
 			req.SetHeader("Accept", "application/xml")
-			req.SetHeader("Content-Type", "application/xml")
+			// do NOT set Content-Type header for XML request
+			// Securetrack rejects it for some reason
+			// cf https://gitlab.uquidit.corp/uqtu/mediator/-/issues/14 and https://gitlab.uquidit.corp/uqtu/back-end/-/issues/123
+			// req.SetHeader("Content-Type", "application/xml")
 		}
 	}
 
@@ -188,11 +206,23 @@ func (c *Client) newWithBody(method string, url_suffix string, body io.Reader, c
 			return nil, fmt.Errorf("no auth information")
 		}
 		req.httpreq.SetBasicAuth(c.username, c.password)
+
 	} else if auth_mode == AuthMode_Token {
 		if c.Token == "" {
 			return nil, fmt.Errorf("token missing")
 		}
 		req.SetHeader("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+
+	} else if auth_mode == AuthMode_Cookie {
+		if c.Token == "" {
+			return nil, fmt.Errorf("token missing")
+		}
+		cookie := http.Cookie{
+			Name:  "JSESSIONID",
+			Value: c.Token,
+		}
+
+		req.AddCookie(&cookie)
 	}
 
 	return &req, nil

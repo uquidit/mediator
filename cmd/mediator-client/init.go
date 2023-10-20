@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"uqtu/mediator/logger"
 	"uqtu/mediator/mediatorscript"
+
+	"github.com/sirupsen/logrus"
 )
 
 func InitFromJSONIfNeeded(conf *mediatorscript.MediatorConfiguration, folder string) error {
@@ -11,11 +12,11 @@ func InitFromJSONIfNeeded(conf *mediatorscript.MediatorConfiguration, folder str
 
 	// check mediator JSON data store file
 	if ok := checkStorage(storageFileName); !ok {
-		logger.Infof("mediator-client could not find JSON file '%s'. Using YAML file.", storageFileName)
+		logrus.Infof("mediator-client could not find JSON file '%s'. Using YAML file.", storageFileName)
 		return nil
 	}
 
-	logger.Infof("mediator-client will use workflows from JSON file: %s", storageFileName)
+	logrus.Infof("mediator-client will use workflows from JSON file: %s", storageFileName)
 
 	// remove unwanted YAML workflows to use JSON workflows
 	conf.Workflows = nil

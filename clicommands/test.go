@@ -65,20 +65,40 @@ func testScript(script_type mediatorscript.ScriptType, name string) error {
 		endpoint = fmt.Sprintf("test/%s", script_type.Slug())
 	}
 
-	results := map[string]mediatorscript.SyncRunResponse{}
+	results := mediatorscript.RunResponse{}
 	if _, err := client.RunPOSTwithToken(endpoint, nil, "json", &results); err == nil {
+
+		// double check for errors
+		if results.Error != "" {
+			return fmt.Errorf("internal error: %s", results.Error)
+		}
+
 		fmt.Println("Test result: ")
 		nberrors := 0
-		for name, res := range results {
+		for name, res := range results.RunResults {
 			fmt.Printf("* %s:\n", name)
+
+			// check for any errors before script execution
+			if res.InternalError != "" {
+				fmt.Printf("   - Internal error: %s\n", res.InternalError)
+				fmt.Printf("   - test %s: FAILED\n", name)
+				nberrors += 1
+				continue
+			}
+
+			if res.ScriptError != "" {
+				fmt.Printf("   - Script error: %s\n", res.ScriptError)
+
+			}
+
 			if res.StdOut != "" {
 				fmt.Printf("   - script output: %s\n", res.StdOut)
 			}
 			if res.StdErr != "" {
 				fmt.Printf("   - script error: %s\n", res.StdErr)
 			}
-			if res.Error != "" {
-				fmt.Printf("   - execution error: %s\n", res.Error)
+			if res.ScriptError != "" {
+				fmt.Printf("   - execution error: %s\n", res.ScriptError)
 			}
 
 			switch {
@@ -105,7 +125,7 @@ func testScript(script_type mediatorscript.ScriptType, name string) error {
 		if nberrors == 0 {
 			fmt.Println("All tests passed")
 		} else {
-			fmt.Printf("%d/%d test(s) failed\n", nberrors, len(results))
+			fmt.Printf("%d/%d test(s) failed\n", nberrors, len(results.RunResults))
 		}
 		return nil
 

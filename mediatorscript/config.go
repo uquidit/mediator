@@ -3,6 +3,8 @@ package mediatorscript
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Steps struct {
@@ -16,9 +18,9 @@ type Workflow struct {
 }
 type MediatorConfiguration struct {
 	Configuration struct {
-		BackendURL    string `json:"backend_url,omitempty"`
-		Logfile       string `json:"logfile,omitempty"`
-		SSLSkipVerify bool   `json:"ssl_skip_verify,omitempty"`
+		BackendURL    string `json:"backend_url,omitempty" mapstructure:"backend_url"` // we need maptructure annotation so we can read yaml files
+		Logfile       string `json:"logfile,omitempty"  mapstructure:"logfile"`
+		SSLSkipVerify bool   `json:"ssl_skip_verify,omitempty"  mapstructure:"ssl_skip_verify"`
 	} `json:"configuration,omitempty"`
 	Workflows []Workflow `json:"workflows,omitempty"`
 }
@@ -47,9 +49,22 @@ func (w Workflow) GetScriptForStep(s string) string {
 	}
 	// if we get here, the step was not found in this workflow.
 	// this may be a config error so dump a warning
-	logger.Warningf("Step %s was not found in configuration for workflow %s", s, w.Name)
+	logrus.Warningf("Step %s was not found in configuration for workflow %s", s, w.Name)
 	// return an empty string as if no script were found
 	return ""
+}
+
+// Returns the name of all the script attached to the workflow.
+// This is useful when testing worflow scripts.
+// Return a slice of strings containing script names.
+func (w Workflow) GetAllScripts() []string {
+	script_names := []string{}
+	for _, st := range w.Steps {
+		if st.Script != "" {
+			script_names = append(script_names, st.Script)
+		}
+	}
+	return script_names
 }
 
 // Returns the name of the step following the step corresponding to given name.
@@ -67,7 +82,7 @@ func (w Workflow) GetNextStep(s string) (string, error) {
 
 	// if we reach that part, return an error
 	if stepwasfound {
-		return "", fmt.Errorf("step '%s' was last in workflow '%s' step list. Cannot get next one", s, w.Name)
+		return "", fmt.Errorf("%w: step is '%s', workflow is '%s'", ErrLastStep, s, w.Name)
 	}
 	return "", fmt.Errorf("step '%s' was not found in workflow '%s' step list. Cannot get next one", s, w.Name)
 

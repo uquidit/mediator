@@ -168,17 +168,7 @@ func TestWorkflow_GetNextStep(t *testing.T) {
 	}
 }
 
-type fakeLogger struct{}
-
-func (l fakeLogger) Infof(format string, a ...any) {
-	print(format, a)
-}
-func (l fakeLogger) Warningf(format string, a ...any) {
-	print(format, a)
-}
-
 func TestWorkflow_GetScriptForStep(t *testing.T) {
-	logger = fakeLogger{}
 	type fields struct {
 		Steps []Steps
 	}

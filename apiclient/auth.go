@@ -7,4 +7,5 @@ const (
 	AuthMode_Basic
 	AuthMode_FormData
 	AuthMode_Token
+	AuthMode_Cookie //will send a cookie using the token (TO DO: fix)
 )

@@ -1,37 +1,36 @@
 package mediatorscript
 
 import (
-	"fmt"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
 
-func TestAllScriptsByTypeAndName(script_type ScriptType, script_name string, c echo.Context) error {
+func TestAllScriptsByTypeAndName(script_type ScriptType, script_name string, res *RunResponse) {
 	var (
 		list ScriptList
 	)
 
 	if list = GetScriptByType(script_type); len(list) == 0 {
-		if script_type == ScriptAll {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "No script was found"})
-		} else {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": fmt.Sprintf("No %v was found", script_type)})
-		}
-
+		res.statusCode = http.StatusNotFound
+		res.err = ErrEmptyScriptList
+		return
 	}
 
-	results := map[string]*SyncRunResponse{}
+	if res.RunResults == nil {
+		res.RunResults = make(SyncRunResponsesMap)
+	}
 
 	for _, script := range list {
 		if script_name != "" && script.Name != script_name {
 			continue
 		}
 
-		logger.Infof("Testing %s", script)
-		results[script.String()] = script.Test()
+		logrus.Infof("Testing %s", script)
+		res.RunResults[script.Name] = script.Test()
 	}
+
 	// return OK status because everythin went well on our side
 	// we're not responsible for test failure
-	return c.JSON(http.StatusOK, results)
+	res.statusCode = http.StatusOK
 }
