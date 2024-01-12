@@ -24,6 +24,14 @@ func isNo(v string) bool {
 	return v == "n" || v == "no"
 }
 
+func ConvertInBoolean(b bool) GetBooleanDefault {
+	if b {
+		return GetBooleanDefault_Yes
+	} else {
+		return GetBooleanDefault_No
+	}
+}
+
 func checkBoolean(answer string, default_value GetBooleanDefault) (bool, error) {
 	switch default_value {
 	case GetBooleanDefault_No:
@@ -38,7 +46,7 @@ func checkBoolean(answer string, default_value GetBooleanDefault) (bool, error) 
 			return true, nil
 		}
 		// any other value? return an error
-		return false, fmt.Errorf("bad answer")
+		return false, ErrBadAnwser
 	}
 }
 
@@ -50,7 +58,7 @@ func checkBoolean(answer string, default_value GetBooleanDefault) (bool, error) 
 // Function will add "[y/n]" suffix to provided label. 'y' or 'n' will be capitalized depending on default_value
 func GetBoolean(label string, default_value GetBooleanDefault) (bool, error) {
 	if label == "" {
-		return false, fmt.Errorf("empty label in GetBoolean()")
+		return false, ErrEmptyLabel
 	}
 
 	// add [y/n] suffix to label. Capitalize according to default value
@@ -80,6 +88,37 @@ func GetBoolean(label string, default_value GetBooleanDefault) (bool, error) {
 	}
 }
 
+func GetBooleanWithDefault(label string, default_value bool) (bool, error) {
+	if label == "" {
+		return false, ErrEmptyLabel
+	}
+	var prompt string
+
+	// add [y/n] suffix to label. Capitalize according to default value
+	if default_value {
+		prompt = "[Y/n] : "
+	} else {
+		prompt = "[y/N] : "
+	}
+
+	for {
+		fmt.Println(label)
+		fmt.Print(prompt)
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		if err := scanner.Err(); err != nil {
+			return false, err
+		}
+		answer := strings.ToLower(scanner.Text())
+
+		if a, err := checkBoolean(answer, ConvertInBoolean(default_value)); err == nil {
+			// if no error, exit
+			return a, nil
+		}
+		// else loop: ask question one more time
+	}
+}
+
 func GetText(label string) (string, error) {
 	if label != "" {
 		fmt.Printf("%s : ", label)
@@ -90,6 +129,27 @@ func GetText(label string) (string, error) {
 		return "", err
 	}
 	return scanner.Text(), nil
+
+}
+
+func GetTextWithDefault(label string, default_value string) (string, error) {
+	fmt.Println(label)
+	if default_value == "" {
+		fmt.Print("[\"\"] : ")
+	} else {
+		fmt.Printf("[%s] : ", default_value)
+	}
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	if response := scanner.Text(); response == "" {
+		return default_value, nil
+	} else {
+		return response, nil
+	}
 
 }
 

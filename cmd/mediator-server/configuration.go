@@ -7,31 +7,38 @@ import (
 )
 
 type Configurations struct {
-	Server         ServerConfigurations
-	Mediatorscript MediatorConfigurations
+	Server         ServerConfigurations   `json:"server"`
+	Mediatorscript MediatorConfigurations `json:"mediatorscript"`
+}
+type MediatorscriptClientConfigurations struct {
+	// full path of the generated configuration file (JSON format)
+	SettingsFile   string `json:"settingsfile"`
+	UploadScript   string `json:"uploadscript"`
+	DownloadScript string `json:"downloadscript"`
 }
 
 type MediatorConfigurations struct {
-	ScriptStorage string `json:"scriptstorage"`
+	ScriptStorage       string                             `json:"scriptstorage"`
+	ClientConfiguration MediatorscriptClientConfigurations `json:"clientconfiguration"`
 }
 
 type ServerConfigurations struct {
-	Port   uint
-	Host   string
-	Log    LogConfigurations
-	Secret string
-	Ssl    SslConfigurations
+	Port   uint              `json:"port"`
+	Host   string            `json:"host"`
+	Log    LogConfigurations `json:"log"`
+	Secret string            `json:"secret"`
+	Ssl    SslConfigurations `json:"ssl"`
 }
 
 type LogConfigurations struct {
-	Access string
-	Error  string
+	Access string `json:"access"`
+	Error  string `json:"error"`
 }
 
 type SslConfigurations struct {
-	Certificate string
-	Key         string
-	Enabled     bool
+	Certificate string `json:"certificate"`
+	Key         string `json:"key"`
+	Enabled     bool   `json:"enabled"`
 }
 
 var Configuration Configurations

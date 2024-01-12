@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func InitFromJSONIfNeeded(conf *mediatorscript.MediatorConfiguration, folder string) error {
+func InitFromJSONIfNeeded(conf *mediatorscript.MediatorLegacyConfiguration, folder string) error {
 	storageFileName := fmt.Sprintf("%s/mediator-client.json", folder)
 
 	// check mediator JSON data store file

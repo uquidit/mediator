@@ -1,0 +1,59 @@
+configuration:
+    backend_url: http://localhost:8080/v1/otp/mediatorscript
+    logfile: mediator-client.log
+    ssl_skip_verify: true
+workflows:
+    - name: Group Provisioning
+      steps:
+        - name: Request group change
+          script: copy2log
+        - name: uQuidIT Provisioning group
+          script: coucou
+    - name: Generic / Provisioning
+      steps:
+        - name: Open request
+          script: ""
+        - name: Auto Suggest Target
+          script: ""
+        - name: Manual Target definition
+          script: ""
+        - name: Risk Review SSI
+          script: ""
+        - name: Auto-Design All FW
+          script: ""
+        - name: Design review All
+          script: ""
+        - name: uQuidIT Provisioning group
+          script: ""
+        - name: uQuidIT Auto-Design AR
+          script: ""
+        - name: uQuidIT Provisioning AR
+          script: ""
+        - name: Verify AR
+          script: ""
+        - name: Manual Validation
+          script: ""
+    - name: Test Provisioning-Manual
+      steps:
+        - name: Open request
+          script: ""
+        - name: Auto Suggest Target
+          script: ""
+        - name: Manual Target definition
+          script: ""
+        - name: Risk Review SSI
+          script: ""
+        - name: Auto-Design All FW
+          script: ""
+        - name: Design review All
+          script: ""
+        - name: uQuidIT Provisioning group
+          script: ""
+        - name: uQuidIT Auto-Design AR
+          script: ""
+        - name: uQuidIT Provisioning AR
+          script: ""
+        - name: Verify AR
+          script: ""
+        - name: Manual Validation
+          script: ""

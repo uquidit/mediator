@@ -88,7 +88,7 @@ func (req *Request) RunWithoutDecode() (io.ReadCloser, error) {
 	var err error
 	req.response, err = req.client.Do(req.httpreq)
 	if err != nil {
-		return nil, fmt.Errorf("error while running request %s: %v", req.httpreq.URL, err)
+		return nil, fmt.Errorf("error while running request %s: %w", req.httpreq.URL, err)
 	}
 
 	req.StatusCode = req.response.StatusCode
@@ -105,7 +105,6 @@ func (req *Request) RunWithoutDecode() (io.ReadCloser, error) {
 
 	default:
 		return req.response.Body, req.decodeError()
-
 	}
 }
 
@@ -136,10 +135,20 @@ func (req *Request) decodeError() error {
 	}
 }
 
-func (req *Request) AddQueryParams(key, value string) {
+func (req *Request) AddQueryParam(key, value string) {
 	q := req.httpreq.URL.Query()          // Get a copy of the query values.
 	q.Add(key, value)                     // Add a new value to the set.
 	req.httpreq.URL.RawQuery = q.Encode() // Encode and assign back to the original query.
+}
+
+func (req *Request) AddQueryParams(params QueryParams) {
+	if len(params) > 0 {
+		q := req.httpreq.URL.Query()
+		for k, v := range params {
+			q.Add(k, v)
+		}
+		req.httpreq.URL.RawQuery = q.Encode()
+	}
 }
 
 func (req *Request) String() string {

@@ -14,7 +14,7 @@ func checkStorage(filename string) bool {
 	return !errors.Is(err, os.ErrNotExist)
 }
 
-func loadMediatorConfiguration(conf *mediatorscript.MediatorConfiguration, filename string) error {
+func loadMediatorConfiguration(conf *mediatorscript.MediatorLegacyConfiguration, filename string) error {
 
 	if content, err := os.ReadFile(filename); err != nil {
 		logrus.Warningf("Meditator configuration init: failed reading storage file: %v", err)

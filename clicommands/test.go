@@ -2,6 +2,7 @@ package clicommands
 
 import (
 	"fmt"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -66,7 +67,7 @@ func testScript(script_type mediatorscript.ScriptType, name string) error {
 	}
 
 	results := mediatorscript.RunResponse{}
-	if _, err := client.RunPOSTwithToken(endpoint, nil, "json", &results); err == nil {
+	if _, err := apiclient.RunPOSTwithToken(endpoint, nil, "json", &results); err == nil {
 
 		// double check for errors
 		if results.Error != "" {

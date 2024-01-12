@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/clicommands"
+	"uqtu/mediator/clicommands/securechangeapi"
 
 	"github.com/spf13/cobra"
 )
@@ -27,12 +29,8 @@ var (
 			if URL == "" {
 				return fmt.Errorf("provided Back-End URL is empty")
 			}
-			if client := GetClientRequester(URL, InsecureSkipVerify); client == nil {
-				return fmt.Errorf("cannot get API client")
-			} else {
-				clicommands.Init(client)
-				return nil
-			}
+			apiclient.InitHelpers(URL, InsecureSkipVerify)
+			return nil
 		},
 	}
 )
@@ -51,5 +49,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&URL, "url", "u", "", "Back-end URL (required)")
 	rootCmd.MarkPersistentFlagRequired("url")
 
+	rootCmd.AddCommand(clicommands.MediatorSettingsCmd)
+	rootCmd.AddCommand(securechangeapi.MediatorSecurechangeAPICmd)
 	rootCmd.AddCommand(clicommands.ScriptCmd)
 }

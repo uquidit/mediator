@@ -2,6 +2,8 @@ package clicommands
 
 import (
 	"fmt"
+	"net/http"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -9,7 +11,8 @@ import (
 
 // registerCmd represents the register command
 var (
-	UnregisterTriggerCmd = &cobra.Command{
+	ignore_unregister_notfound_error bool
+	UnregisterTriggerCmd             = &cobra.Command{
 		Use:   "unregister [scriptname]",
 		Short: "Unregister one or all Trigger script.",
 		Long: `Run this command to unregister one or all Trigger script.
@@ -68,7 +71,11 @@ func unregisterScript(script_type mediatorscript.ScriptType, name string) error 
 		endpoint = fmt.Sprintf("unregister/%s", script_type.Slug())
 	}
 
-	if _, err := client.RunDELETEwithToken(endpoint, "json", nil); err != nil {
+	if _, err := apiclient.RunDELETEwithToken(endpoint, "json", nil); err != nil {
+		if ignore_unregister_notfound_error && apiclient.GetLastRequestStatusCode() == http.StatusNotFound {
+			fmt.Println("[WARNING] Script was not found.")
+			return nil
+		}
 		return err
 
 	} else if name != "" {
@@ -83,4 +90,8 @@ func unregisterScript(script_type mediatorscript.ScriptType, name string) error 
 		fmt.Printf("%s has been unregistered.\n", script_type)
 		return nil
 	}
+}
+
+func init() {
+	UnregisterTriggerCmd.Flags().BoolVar(&ignore_unregister_notfound_error, "ignore-not-found", false, "Do not return an error is the provided script was not found in registry.")
 }

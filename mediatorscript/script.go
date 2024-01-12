@@ -23,8 +23,8 @@ type Script struct {
 type ScriptList []*Script
 
 var (
-	allScripts map[string]*Script
-	filename   string
+	allScripts            map[string]*Script
+	scriptStorageFilename string
 )
 
 func GetScriptByName(name string) (*Script, error) {
@@ -144,8 +144,8 @@ func save() error {
 	// marshall list into JSON
 	if content, err := json.MarshalIndent(allScripts, "", " "); err != nil {
 		return err
-	} else if err := os.WriteFile(filename, content, 0644); err != nil { // save string to file
-		return fmt.Errorf("%w: '%s'", err, filename)
+	} else if err := os.WriteFile(scriptStorageFilename, content, 0644); err != nil { // save string to file
+		return fmt.Errorf("%w: '%s'", err, scriptStorageFilename)
 	}
 	return nil
 }

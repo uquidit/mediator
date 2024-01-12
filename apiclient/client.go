@@ -45,11 +45,18 @@ func NewClientWithOTP(urlprefix string, InsecureSkipVerify bool) (*Client, error
 
 	client := NewClient(urlprefix, "", "", InsecureSkipVerify)
 
-	var err error
-	if client.Token, err = totp.GetKey(); err != nil {
+	if err := client.SetToken(); err != nil {
 		return nil, err
 	}
 	return client, nil
+}
+
+func (c *Client) SetToken() error {
+	var err error
+	if c.Token, err = totp.GetKey(); err != nil {
+		return err
+	}
+	return nil
 }
 
 /****** GET ******/
@@ -68,6 +75,10 @@ func (c *Client) NewGETwithBodyAndToken(url string, body io.Reader, content stri
 
 func (c *Client) NewGETwithBasicAuth(url string, content string) (*Request, error) {
 	return c.newRequest("GET", url, content, AuthMode_Basic)
+}
+
+func (c *Client) NewGETwithCookie(url string, content string) (*Request, error) {
+	return c.newRequest("GET", url, content, AuthMode_Cookie)
 }
 
 /****** POST ******/
@@ -212,7 +223,7 @@ func (c *Client) newWithBody(method string, url_suffix string, body io.Reader, c
 			return nil, fmt.Errorf("token missing")
 		}
 		req.SetHeader("Authorization", fmt.Sprintf("Bearer %s", c.Token))
-
+		c.Token = ""
 	} else if auth_mode == AuthMode_Cookie {
 		if c.Token == "" {
 			return nil, fmt.Errorf("token missing")

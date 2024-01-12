@@ -2,6 +2,7 @@ package clicommands
 
 import (
 	"fmt"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -20,39 +21,25 @@ Add new script using the "script register" command.`,
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			// list all scripts
-			var list []*mediatorscript.Script
-			if _, err := client.RunGETwithToken("", "json", &list); err != nil {
+			if list_by_type, err := getAllScriptNamesByType(); err != nil {
 				return err
-			}
+			} else {
 
-			lines := map[mediatorscript.ScriptType][]string{}
-			for _, s := range list {
-				line := fmt.Sprintf("  - %s: %s\n", s.Name, s.Fullpath)
-
-				if _, ok := lines[s.Type]; !ok {
-					lines[s.Type] = make([]string, 1)
-					lines[s.Type][0] = line
-				} else {
-					lines[s.Type] = append(lines[s.Type], line)
+				fmt.Println("List of registered scripts:")
+				for _, t := range []mediatorscript.ScriptType{
+					mediatorscript.ScriptTrigger,
+					mediatorscript.ScriptCondition,
+					mediatorscript.ScriptTask,
+					mediatorscript.ScriptAssignment,
+				} {
+					fmt.Printf("\n* %s: %d\n", t, len(list_by_type[t]))
+					for _, s := range list_by_type[t] {
+						fmt.Printf("  - %s: %s\n", s.Name, s.Fullpath)
+					}
 				}
 
+				return nil
 			}
-
-			fmt.Printf("Nb of scripts: %d\n", len(lines))
-			for _, t := range []mediatorscript.ScriptType{
-				mediatorscript.ScriptTrigger,
-				mediatorscript.ScriptCondition,
-				mediatorscript.ScriptTask,
-				mediatorscript.ScriptAssignment,
-			} {
-				fmt.Printf("\n* %s: %d\n", t, len(lines[t]))
-				for _, s := range lines[t] {
-					fmt.Print(s)
-				}
-			}
-
-			return nil
 		},
 	}
 	interactiveTypes []mediatorscript.ScriptType
@@ -91,4 +78,25 @@ func init() {
 		ScriptCmd.AddCommand(c)
 	}
 
+}
+
+type scriptListByType map[mediatorscript.ScriptType][]*mediatorscript.Script
+
+func getAllScriptNamesByType() (scriptListByType, error) {
+	var list []*mediatorscript.Script
+	if _, err := apiclient.RunGETwithToken("", "json", &list); err != nil {
+		return nil, err
+	}
+
+	list_by_type := scriptListByType{}
+	for _, s := range list {
+		if _, ok := list_by_type[s.Type]; !ok {
+			list_by_type[s.Type] = make([]*mediatorscript.Script, 1)
+			list_by_type[s.Type][0] = s
+		} else {
+			list_by_type[s.Type] = append(list_by_type[s.Type], s)
+		}
+
+	}
+	return list_by_type, nil
 }

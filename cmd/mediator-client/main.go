@@ -10,8 +10,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"uqtu/mediator/mediatorscript"
+	"uqtu/mediator/mediatorsettings"
+	"uqtu/mediator/scworkflow"
 	"uqtu/mediator/totp"
 
 	"uqtu/mediator/configparser"
@@ -24,21 +27,27 @@ import (
 
 var (
 	Version = "develop"
+	trigger scworkflow.SecurechangeTrigger
 )
 
+type arguments struct {
+	data_filename     string
+	scriptedCondition bool
+	preAssignment     bool
+	scriptedTask      bool
+	trigger           string
+	settings_filename string
+}
+
 func main() {
-	var (
-		datafilenameFlag  string
-		useNextStep       bool
-		scriptedCondition bool
-		preAssignment     bool
-		scriptedTask      bool
-	)
-	flag.StringVar(&datafilenameFlag, "file", "", "Read data from file instead of stdin.")
-	flag.BoolVar(&useNextStep, "next-step", false, "Tell mediator-client to act as if the ticket is not in provided step but in following step in list. In that case, the script associated with the next step will be executed.")
-	flag.BoolVar(&scriptedCondition, "scripted-condition", false, "Tell mediator-client to request back-end to run special 'Scripted Condition' script.")
-	flag.BoolVar(&preAssignment, "pre-assignment", false, "Tell mediator-client to request back-end to run special 'Pre-Assignment' script.")
-	flag.BoolVar(&scriptedTask, "scripted-task", false, "Tell mediator-client to request back-end to run special 'Scripted Task' script.")
+	args := arguments{}
+	flag.StringVar(&args.data_filename, "file", "", "Read data from file instead of stdin.")
+	flag.StringVar(&args.trigger, "trigger", "", "Specify Securechange trigger for current processing")
+	flag.StringVar(&args.settings_filename, "settings-filename", "mediator-client.json", "Specify the name of workflow settings file.")
+	flag.BoolVar(&args.scriptedCondition, "scripted-condition", false, "Tell mediator-client to request back-end to run special 'Scripted Condition' script.")
+	flag.BoolVar(&args.preAssignment, "pre-assignment", false, "Tell mediator-client to request back-end to run special 'Pre-Assignment' script.")
+	flag.BoolVar(&args.scriptedTask, "scripted-task", false, "Tell mediator-client to request back-end to run special 'Scripted Task' script.")
+
 	// version
 	versionPtr := flag.Bool("version", false, "Print version number and exit.")
 	flag.BoolVar(versionPtr, "v", false, "Alias of --version")
@@ -47,41 +56,41 @@ func main() {
 		fmt.Printf("Mediator version %s\n", Version)
 		os.Exit(0)
 	}
-	if flag.NArg() != 1 && !(scriptedCondition || preAssignment || scriptedTask) {
-		logrus.Fatal("ERROR: wrong number of positional arguments: one expected, got ", flag.NArg())
+	if t, err := checkArgumentsAndGetTrigger(flag.NArg(), args); err != nil {
+		logrus.Fatal(err)
+	} else {
+		trigger = t
 	}
 
-	var conf mediatorscript.MediatorConfiguration
+	var conf mediatorscript.MediatorLegacyConfiguration
 
 	// get current executable so we can figure out what is current path
 	// conf file is in the same folder as configuration file
-	if ex, err := os.Executable(); err != nil {
+	ex, err := os.Executable()
+	if err != nil {
 		logrus.Fatal(err)
-	} else {
-		// get current folder from executable absolute path
-		currPath := filepath.Dir(ex)
+	}
+	// get current folder from executable absolute path
+	currPath := filepath.Dir(ex)
 
-		// forge config name
-		absPath := fmt.Sprintf("%s/mediator-client.yml", currPath)
-		if err := configparser.ReadConfAbsolutePath(absPath, &conf, nil); err != nil {
-			logrus.Fatal(err)
-		}
+	if err := configparser.ReadConfAbsolutePath(fmt.Sprintf("%s/mediator-client.yml", currPath), &conf, nil); err != nil {
+		logrus.Fatal(err)
+	}
 
-		if err := logger.InitAppLogger(logrus.WarnLevel, true, true, true, true, true, true, "", conf.Configuration.Logfile); err != nil {
-			logrus.Fatal(err)
-		}
-		defer logger.CloseLogFile()
+	if err := logger.InitAppLogger(
+		GetLogLevel(conf.Configuration.Log.Level),
+		true, true, true, true, true, true, "",
+		conf.Configuration.Log.File); err != nil {
 
-		if err := InitFromJSONIfNeeded(&conf, currPath); err != nil {
-			logrus.Fatal(err)
-		}
+		logrus.Fatal(err)
+	}
+	defer logger.CloseLogFile()
 
-		if err := mediatorscript.Init(""); err != nil {
-			// mediator-client does not need to care about this error
-			// there is no file to read, required for server only
-			if !errors.Is(err, mediatorscript.ErrInitNoFileName) {
-				logrus.Warning(err)
-			}
+	if err := mediatorscript.Init(""); err != nil {
+		// mediator-client does not need to care about this error
+		// there is no file to read, required for server only
+		if !errors.Is(err, mediatorscript.ErrInitNoFileName) {
+			logrus.Warning(err)
 		}
 	}
 
@@ -98,23 +107,22 @@ func main() {
 		logrus.Warningf("SSL verification will be skipped! Connection to backend is insecure!")
 	}
 
-	if scriptedCondition || preAssignment || scriptedTask {
+	if args.scriptedCondition || args.preAssignment || args.scriptedTask {
 		logrus.Infof("Starting mediator-client for Interactive scripts")
 
 		// this function will terminate current process
 		// it will deal with all error cases and log accordingly
 		// actually, the code is in a separate function in an effort to keep main() short
-		runInteractiveScripts(scriptedCondition, preAssignment, scriptedTask, datafilenameFlag, &conf)
+		runInteractiveScripts(args.scriptedCondition, args.preAssignment, args.scriptedTask, args.data_filename, &conf)
 
 	}
 
-	if useNextStep {
-		logrus.Infof("Starting mediator-client in 'next step' mode")
-	} else {
-		logrus.Infof("Starting mediator-client in normal mode")
-	}
+	logrus.Infof("Starting mediator-client in normal mode. Trigger is %s", trigger)
 
-	if source, err := getInputSource(datafilenameFlag); err != nil {
+	if wf_settings, err := mediatorsettings.ReadWorkflowsSettings(fmt.Sprintf("%s/%s", currPath, args.settings_filename)); err != nil {
+		logrus.Fatal(err)
+
+	} else if source, err := getInputSource(args.data_filename); err != nil {
 		logrus.Fatal(err)
 
 	} else if xmlData, err := io.ReadAll(source); err != nil {
@@ -124,7 +132,7 @@ func main() {
 		// get workflow
 		current_workflow := flag.Args()[0]
 
-		workflow, err := conf.GetWorkflow(current_workflow)
+		settings, err := wf_settings.GetWorkflowSettings(current_workflow)
 		if err != nil {
 			logrus.Fatal(err)
 		} else {
@@ -138,7 +146,7 @@ func main() {
 			logrus.Infof("mediator-client is in test mode")
 
 			// we will send a test request for all scripts attached to workflow
-			scripts := workflow.GetAllScripts()
+			scripts := settings.GetAllScripts(trigger)
 
 			run_results := mediatorscript.SyncRunResponsesMap{}
 
@@ -222,72 +230,85 @@ func main() {
 		var data mediatorscript.TicketInfo
 		if err := xml.Unmarshal(xmlData, &data); err != nil {
 			logrus.Fatalf("cannot parse XML input #%s#: %v", string(xmlData), err)
-		} else {
+		}
 
-			// work out what is current step
-			// we look for step name in completion_data and in current_stage.
-			// they can't be both null neither both non null
-			// if completion data is provided, get from there. ignore next step
-			// otherwise, get from current status. In that case, check next-step flag as we may need to get next step.
-			currentStep := ""
-			switch {
-			case data.CompletionData != nil && data.CurrentStage == nil:
-				currentStep = data.CompletionData.Name
-				logrus.Infof("Info from XML: ticket is '%s' (ID=%d), current step is %s", data.Subject, data.ID, currentStep)
-			case data.CompletionData == nil && data.CurrentStage != nil && !useNextStep:
-				currentStep = data.CurrentStage.Name
-				logrus.Infof("Info from XML: ticket is '%s' (ID=%d), current step is %s", data.Subject, data.ID, currentStep)
-			case data.CompletionData == nil && data.CurrentStage != nil && useNextStep:
+		// work out what is current step
+		// we look for step name in completion_data and in current_stage.
+		// they can't be both null neither both non null
+		// if completion data is provided, get from there. ignore next step
+		// otherwise, get from current status. In that case, check next-step flag as we may need to get next step.
+		currentStep := ""
+		switch {
+		case data.CompletionData != nil && data.CurrentStage == nil:
+			currentStep = data.CompletionData.Name
+			logrus.Infof("Info from XML: ticket is '%s' (ID=%d), current step is %s", data.Subject, data.ID, currentStep)
+		case data.CompletionData == nil && data.CurrentStage != nil:
+			currentStep = data.CurrentStage.Name
+			logrus.Infof("Info from XML: ticket is '%s' (ID=%d), current step is %s", data.Subject, data.ID, currentStep)
+		default:
+			logrus.Warningf("mediator-client received unexpected XML data: %s", string(xmlData))
+			logrus.Fatalf("unexpected XML data: both 'current_stage' and 'completion_data' tags are missing. Cannot get ticket step. Stop.")
+		}
+
+		if scripts := settings.GetScriptsForTriggerAndStep(trigger, currentStep); len(scripts) > 0 {
+			logrus.Infof("mediator-client found %d script(s) for ticket '%s' (ID=%d) in step %s: %v. Trigger action.", len(scripts), data.Subject, data.ID, currentStep, scripts)
+
+			if client, err := apiclient.NewClientWithOTP(conf.Configuration.BackendURL, conf.Configuration.SSLSkipVerify); err != nil {
+				logrus.Fatalf("cannot get API client: %v", err)
+			} else {
 				var err error
-				logrus.Infof("Info from XML: ticket is '%s' (ID=%d), current step is %s", data.Subject, data.ID, data.CurrentStage.Name)
-				if currentStep, err = workflow.GetNextStep(data.CurrentStage.Name); err != nil {
-					if errors.Is(err, mediatorscript.ErrLastStep) {
-						// we must not return an error code here
-						// because SC will try again and again
-						// let's pretend it's all good and dump a warning in log
-						logrus.Warningf("%v, ticket is '%s' (ID=%d)", err, data.Subject, data.ID)
-						os.Exit(0)
+				for _, script := range scripts {
+					if script == "" {
+						continue
 					}
-					logrus.Fatal(err)
+					if client.Token, err = totp.GetKey(); err != nil {
+						logrus.Fatalf("TOTP error: %v. Stop!", err)
+					}
+
+					script_url := fmt.Sprintf("execute/%s", script)
+
+					if jsonData, err := json.Marshal(data); err != nil {
+						logrus.Fatal(err)
+					} else if r, err := client.NewPOSTwithToken(script_url, bytes.NewBuffer(jsonData), "json"); err != nil {
+						logrus.Warningf("mediator-client is sending resquest to entry point: %s", script_url)
+						logrus.Fatal(err)
+					} else if _, err := r.RunWithoutDecode(); err != nil { // returns 204 (no content) or an error
+						// something went wrong before script execution
+						// we don't need response body: error will be decoded into err
+						logrus.Warningf("mediator-client sent resquest to entry point '%s'  with json data: %s", script_url, string(jsonData))
+						logrus.Errorf("mediator-client received an error from backend: %v", err)
+					} else {
+						logrus.Infof("mediator-client received an empty OK response")
+					}
 				}
-				logrus.Infof("Next step is %s", currentStep)
-			default:
-				logrus.Warningf("mediator-client received unexpected XML data: %s", string(xmlData))
-				logrus.Fatalf("unexpected XML data: both 'current_stage' and 'completion_data' tags are missing. Cannot get ticket step. Stop.")
 			}
-
-			if script := workflow.GetScriptForStep(currentStep); script != "" {
-				logrus.Infof("mediator-client found a script for ticket '%s' (ID=%d) in step %s: %s. Trigger action.", data.Subject, data.ID, currentStep, script)
-
-				client := apiclient.NewClient(conf.Configuration.BackendURL, "", "", conf.Configuration.SSLSkipVerify)
-
-				var err error
-				if client.Token, err = totp.GetKey(); err != nil {
-					logrus.Fatalf("TOTP error: %v. Stop!", err)
-				}
-
-				script_url := fmt.Sprintf("execute/%s", script)
-
-				if jsonData, err := json.Marshal(data); err != nil {
-					logrus.Fatal(err)
-				} else if r, err := client.NewPOSTwithToken(script_url, bytes.NewBuffer(jsonData), "json"); err != nil {
-					logrus.Warningf("mediator-client is sending resquest to entry point: %s", script_url)
-					logrus.Fatal(err)
-				} else if _, err := r.RunWithoutDecode(); err != nil { // returns 204 (no content) or an error
-					// something went wrong before script execution
-					// we don't need response body: error will be decoded into err
-					logrus.Warningf("mediator-client sent resquest to entry point '%s'  with json data: %s", script_url, string(jsonData))
-					logrus.Fatalf("mediator-client received an error from backend: %v", err)
-				} else {
-					logrus.Infof("mediator-client received an empty OK response")
-					os.Exit(0)
-
-				}
-
-			}
+		} else {
 			logrus.Infof("mediator-client found no script for ticket '%s' (ID=%d) in step '%s'. Do nothing.", data.Subject, data.ID, currentStep)
 		}
 	}
+}
+
+func checkArgumentsAndGetTrigger(nb_args int, args arguments) (scworkflow.SecurechangeTrigger, error) {
+	if args.scriptedCondition || args.preAssignment || args.scriptedTask {
+		if (args.scriptedCondition && args.preAssignment) ||
+			(args.scriptedCondition && args.scriptedTask) ||
+			(args.preAssignment && args.scriptedTask) {
+			return scworkflow.NO_TRIGGER, fmt.Errorf("only one of the 'scripted condition', 'scripted task' and 'pre assignment' flags should be used at a time")
+		}
+		return scworkflow.NO_TRIGGER, nil
+	}
+
+	t := scworkflow.GetTriggerFromString(args.trigger)
+	if t == scworkflow.NO_TRIGGER {
+		return t, fmt.Errorf("unknown or empty trigger: %s", args.trigger)
+	}
+
+	if nb_args != 1 {
+		return t, fmt.Errorf("wrong number of positional arguments: one expected, got %d", nb_args)
+	} else {
+		return t, nil
+	}
+
 }
 
 func getInputSource(datafilenameFlag string) (*os.File, error) {
@@ -298,4 +319,29 @@ func getInputSource(datafilenameFlag string) (*os.File, error) {
 	} else {
 		return os.Stdin, nil
 	}
+}
+
+func GetLogLevel(l string) logrus.Level {
+	if strings.EqualFold(l, "Panic") {
+		return logrus.PanicLevel
+	}
+	if strings.EqualFold(l, "Fatal") {
+		return logrus.FatalLevel
+	}
+	if strings.EqualFold(l, "Error") {
+		return logrus.ErrorLevel
+	}
+	if strings.EqualFold(l, "Warn") {
+		return logrus.WarnLevel
+	}
+	if strings.EqualFold(l, "Info") {
+		return logrus.InfoLevel
+	}
+	if strings.EqualFold(l, "Debug") {
+		return logrus.DebugLevel
+	}
+	if strings.EqualFold(l, "Trace") {
+		return logrus.TraceLevel
+	}
+	return logrus.WarnLevel
 }

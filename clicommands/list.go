@@ -3,13 +3,14 @@ package clicommands
 import (
 	"fmt"
 	"strings"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 )
 
 func listScripts(script_type mediatorscript.ScriptType) error {
 	// list all scripts
 	var list []*mediatorscript.Script
-	if _, err := client.RunGETwithToken("", "json", &list); err != nil {
+	if _, err := apiclient.RunGETwithToken("", "json", &list); err != nil {
 		return err
 	}
 

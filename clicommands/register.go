@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -83,7 +84,7 @@ func registerScript(script_type mediatorscript.ScriptType, path string) error {
 
 		if jsoninput, err := json.Marshal(s); err != nil {
 			return err
-		} else if _, err := client.RunPOSTwithToken("register", bytes.NewBuffer(jsoninput), "json", nil); err != nil {
+		} else if _, err := apiclient.RunPOSTwithToken("register", bytes.NewBuffer(jsoninput), "json", nil); err != nil {
 			return err
 
 		} else {

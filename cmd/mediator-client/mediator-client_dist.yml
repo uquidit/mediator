@@ -1,4 +1,6 @@
 configuration:
   backend_url: https://UQTU_DOMAIN/v1/otp/mediatorscript
-  logfile: /var/log/mediator-client.log
+  log:
+    file: /var/log/mediator-client.log
+    level: info
   ssl_skip_verify: false

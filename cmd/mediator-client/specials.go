@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func runInteractiveScripts(scriptedCondition bool, preAssignment bool, scriptedTask bool, datafilenameFlag string, conf *mediatorscript.MediatorConfiguration) {
+func runInteractiveScripts(scriptedCondition bool, preAssignment bool, scriptedTask bool, datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
 	if (scriptedCondition && (preAssignment || scriptedTask)) ||
 		(preAssignment && (scriptedCondition || scriptedTask)) ||
 		(scriptedTask && (scriptedCondition || preAssignment)) {

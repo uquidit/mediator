@@ -2,6 +2,7 @@ package clicommands
 
 import (
 	"fmt"
+	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -60,7 +61,7 @@ func refreshScript(script_type mediatorscript.ScriptType, name string) error {
 		endpoint = fmt.Sprintf("refresh/%s", script_type.Slug())
 	}
 
-	if _, err := client.RunPOSTwithToken(endpoint, nil, "json", nil); err != nil {
+	if _, err := apiclient.RunPOSTwithToken(endpoint, nil, "json", nil); err != nil {
 		return err
 
 	} else if name != "" {

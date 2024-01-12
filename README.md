@@ -11,7 +11,6 @@ This system allows you to execute any external script to process your Securechan
 These scripts will be executed on the main node instead of the Securechange pod, providing extra flexibility.
 
 We assume you are familiar with Tufin Securechange and know how to configure it.
-
 ## Architecture overview
 
 The main difficulty to overcome is that in the TOS Classic architecture, scripts are executed on the machine where SecureChange runs while in the TOS Aurora architecture, those scripts are supposed to run on a Kubernetes pod, which is very limited.
@@ -66,7 +65,6 @@ They can all be set at build time using the `--ldflags` build flag with the `-X`
 `--ldflags="-X '<project name>/<package name>.<variable name>=<string value>'"`
 
 Example:
-
 ```sh
 $ go build --ldflags="\
 -X 'uqtu/mediator/mediatorscript.salt=Hello' \
@@ -145,7 +143,6 @@ $ sudo systemctl enable mediator-server.service
 ```
 
 You can check the service is enabled:
-
 ```
 $ sudo systemctl is-enabled mediator-server.service
 enabled
@@ -261,7 +258,6 @@ A new Trigger script named "run.sh" has been registered and linked to file `/pat
 All the scripts are registered under a name. This name must be unique in the script database. By default, the mediator will use the script file name as a name. However, you can provide a custom name using the `--name` flag.
 
 Example:
-
 ```
 $ mediator scripts trigger register /path/to/scripts/my-script.py --name MyScript
 ```
@@ -280,7 +276,6 @@ Nb of Trigger script: 2
 ```
 
 You can unregister a script with the `unregister` command:
-
 ```
 $ mediator scripts trigger unregister MyScript
 Script 'MyScript' has been unregistered.
@@ -304,7 +299,6 @@ All the subcommands described above are available for the other script types. Ju
 Top-level subcommands are also available. They will operate on all scripts, regardless of their type. Use the `--help` flag for more information.
 
 ## Mediator-client
-
 ### Configuration
 
 The configuration file of `mediator-client` includes information about how it should connect to `mediator-server` and also about the scripts that need to be executed when a script reaches a particular step of a workflow.

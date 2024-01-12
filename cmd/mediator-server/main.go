@@ -8,6 +8,7 @@ import (
 
 	"uqtu/mediator/logger"
 	"uqtu/mediator/mediatorscript"
+	"uqtu/mediator/mediatorsettings"
 	"uqtu/mediator/totp"
 
 	"github.com/labstack/echo/v4"
@@ -67,7 +68,7 @@ func main() {
 	}
 	defer logger.CloseLogFile()
 
-	// initialize mediatorscript logger with rootlogger so all logs will go to the same location
+	// initialize mediatorscript package
 	if err := mediatorscript.Init(Configuration.Mediatorscript.ScriptStorage); err != nil {
 		logrus.Warningf("error while loading scripts for mediator list: %v", err)
 	}
@@ -96,6 +97,16 @@ func main() {
 		}))
 	}
 
+	if errs := mediatorsettings.Init(
+		Configuration.Mediatorscript.ClientConfiguration.SettingsFile,
+		Configuration.Mediatorscript.ClientConfiguration.UploadScript,
+		Configuration.Mediatorscript.ClientConfiguration.DownloadScript,
+	); len(errs) != 0 {
+		for _, err := range errs {
+			logrus.Warning(err)
+		}
+	}
+
 	// Middleware
 	e.Use(middleware.Recover())
 	// CORS default
@@ -113,6 +124,16 @@ func main() {
 
 	// mediator-client entry points protected by otp
 	mediatorscript.AddMediatorscriptAPI(otp)
+
+	// upload and download settings
+	otp.GET("/settings", mediatorsettings.GetSettings)
+	otp.POST("/settings", mediatorsettings.SetSettings)
+	otp.POST("/settings/workflows", mediatorsettings.SetWorkflowSettings)
+
+	// auth := v1.Group("/-")
+	// auth.Use(echojwt.JWT([]byte(Configuration.Server.Secret)))
+	// auth.GET("/settings", mediatorsettings.GetSettings)
+	// auth.POST("/settings", mediatorsettings.SetSettings)
 
 	// Start server
 	listen_address := fmt.Sprintf("%s:%d", Configuration.Server.Host, Configuration.Server.Port)
