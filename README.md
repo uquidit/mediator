@@ -28,8 +28,7 @@ The following diagram illustrates the interactions of the different elements inv
 You need to download the source code to build the executable file. 
 
 To do so, clone our Github repository:
-`$ git clone https://github.com/
-it/mediator.git`
+`$ git clone https://github.com/uquidit/mediator.git`
 
 ## Get Golang
 
@@ -42,7 +41,7 @@ You need Golang installed so you can build the binaries. Follow [this procedure]
 * `mediator-server`
 * `mediator-cli`
 
-You can compile them by going to their respective directories and run the `go build .` command. The binary will be created in current directory. Use teh `-o` flag to specify a destination directory.
+You can compile them by going to their respective directories and run the `go build .` command. The binary will be created in current directory. Use the `-o` flag to specify a destination directory.
 
 * `mediator-client`  => `mediator/cmd/mediator-client`
 * `mediator-server`  => `mediator/cmd/mediator-server`
@@ -167,7 +166,6 @@ For instance, the following command will return the list of available commands:
 $ /opt/mediator/bin/mediator-cli --url=http://xxx/v1/otp --help
 
 This CLI provides commands to manage scripts used by Mediator back-end. It includes:
-
 * List registered scripts
 * Register new scripts
 * Un-register useless scripts
@@ -178,10 +176,11 @@ Usage:
   mediator [command]
 
 Available Commands:
-  completion      Generate the autocompletion script for the specified shell
-  generate-config Generate a template configuration file for mediator-client
-  help            Help about any command
-  script          List available scripts for mediator. Available alias:'scripts'
+  completion       Generate the autocompletion script for the specified shell
+  help             Help about any command
+  script           List available scripts for mediator. Available alias:'scripts'
+  securechange-api Show and manage SecurechangeAPI configuration
+  settings         Update Mediator settings
 
 Flags:
   -h, --help            help for mediator
@@ -298,47 +297,314 @@ All the subcommands described above are available for the other script types. Ju
 
 Top-level subcommands are also available. They will operate on all scripts, regardless of their type. Use the `--help` flag for more information.
 
-## Mediator-client
-### Configuration
 
-The configuration file of `mediator-client` includes information about how it should connect to `mediator-server` and also about the scripts that need to be executed when a script reaches a particular step of a workflow.
 
-`mediator-cli` will help us with creating this file by generating a template we can then amend. The previously registered “run.sh” script will be used as a default for all steps of all workflows.
 
-Prior to running the following command, make sure that all the required workflows are properly configured and activated in Securechange.
 
-```
-$ mediator generate-config https://xxx/securechangeworkflow/api/securechange --script run.sh
-```
 
-Review the newly created `mediator-client.yml` file and make changes where necessary.
 
-### Secondary scripts
 
-`mediator-client` comes with 4 secondary scripts. Make sure they are available on the main node:
 
-* `mediator-client-next-step.sh`: To be used instead of `mediator-client` when Securechange fires the trigger before the ticket has reach its step. It happens on the "Advance" trigger.
+
+
+
+## Mediator-client installation
+
+
+### Helper scripts
+
+`mediator-client` comes with 13 helper scripts. They embed extra configuration and make it easy to use and configure `mediator-client`. In facts, `mediator-client` executable will never be run directly.
+
+Make sure they are available on the main node:
+
+* `mediator-client-advance.sh`: executes `mediator-client` when the trigger `ADVANCE` is fired.
+* `mediator-client-automatic-step-failed.sh`: executes `mediator-client` when the trigger `AUTOMATIC STEP FAILED` is fired.
+* `mediator-client-cancel.sh`: executes `mediator-client` when the trigger `CANCEL` is fired.
+* `mediator-client-close.sh`: executes `mediator-client` when the trigger `CLOSE` is fired.
+* `mediator-client-create.sh`: executes `mediator-client` when the trigger `CREATE` is fired.
+* `mediator-client-redo.sh`: executes `mediator-client` when the trigger `REDO` is fired.
+* `mediator-client-reject.sh`: executes `mediator-client` when the trigger `REJECT` is fired.
+* `mediator-client-reopen.sh`: executes `mediator-client` when the trigger `REOPEN` is fired.
+* `mediator-client-resolve.sh`: executes `mediator-client` when the trigger `RESOLVE` is fired.
+* `mediator-client-resubmit.sh`: executes `mediator-client` when the trigger `RESUBMIT` is fired.
 * `mediator-client-pre-assignment.sh`: To be used as "Pre-Assignment" script
 * `mediator-client-scripted-condition.sh`: To be used as "Scripted condition" script
 * `mediator-client-scripted-task.sh`: To be used as "Scripted task" script
 
 ### Upload to Securechange pod
 
-6 files need to be uploaded to Securechange:
-* mediator executable and configuration files:
+15 files need to be uploaded to Securechange:
+* `mediator-client` executable file and its configuration file:
   - `mediator-client`
-  - `mediator-client.yml`
-* 4 secondary scripts:
-  - `mediator-client-next-step.sh`
-  - `mediator-client-pre-assignment.sh`
-  - `mediator-client-scripted-condition.sh`
-  - `mediator-client-scripted-task.sh`
+  - `mediator-client.yml`: see next chapter to know how to create this file.
+* 13 `mediator-client` helpers listed above
 
+*NB: `mediator-client` also needs a settings file but it will be automatically uploaded to Securechange. You do not need to deal with it at this stage.*
 
-Upload them all to Securechange using the following command for each of the 6 previous files as argument:
+Upload them all to Securechange using the following command for each of the 15 previous files as argument:
 
 ```
 $ sudo tos scripts sc push mediator-client
 [Mar 20 23:59:57]  INFO Pushing from "mediator-client" to "."
 [Mar 20 23:59:57]  INFO Done pushing files/folders
 ```
+
+
+
+
+## Mediator-client: Configuration & Settings
+
+The configuration of `mediator-client` includes information about how it should connect to `mediator-server` and log its activity. 
+`mediator-client` also requires a setting file which contains the list of scripts that need to be executed when a ticket reaches a particular step of its workflow. 
+
+Configuration and settings are split into 2 different files:
+* A YAML file `mediator-client.yml` contains back-end connection configuration
+* A JSON file `mediator-client.json` contains information about script execution. *It should not be manually edited*.
+
+### Configuration file: how mediator-client connects to server
+
+A distribution `mediator-client_dist.yml` YAML file is provided for your convenience:
+
+```yaml
+configuration:
+  backend_url: https://DOMAIN/v1/otp/mediatorscript
+  ssl_skip_verify: false
+  log:
+    file: /var/log/mediator-client.log
+    level: info
+```
+
+Steps:
+1. Copy `mediator-client_dist.yml` into `mediator-client.yml`
+2. Edit the newly created `mediator-client.yml` file and enter your back-end server information and logging preferences.
+3. Save the file. *Do NOT change the file name!* 
+4. Upload the file to the Securechange pod in the same directory as the `mediator-client` executable.
+
+### Settings file: which script mediator-client should trigger
+
+`mediator-cli` will assist you editing and uploading the settings file to Securechange.
+
+Prior to going into the following steps, make sure that all the required workflows are properly activated in Securechange.
+
+The `settings` command will be used to generate and upload the settings file:
+
+
+```
+$ mediator settings --help
+Interactively update Mediator client settings.
+	
+These settings tells Mediator client which script should be run for a given ticket and trigger.
+This is an interactive command: required information will be prompted to you.
+
+Usage:
+  mediator settings [flags]
+
+Flags:
+  -h, --help              help for settings
+  -H, --host string       SecureChange host. Will be prompted if not provided.
+  -P, --password string   SecureChange password. Will be prompted if not provided.
+  -s, --settings string   Path to local Mediator client settings file.
+  -U, --username string   SecureChange user name. Will be prompted if not provided.
+
+Global Flags:
+      --sslskipverify   Skip SSL certificate verification (insecure)
+  -u, --url string      Back-end URL (required)
+
+```
+
+Run the command. It will download any existing settings file from Securechange and assist you while editing the file.
+If you do not provide connection information via `--host`, `--username` and `--password` flag, they will be prompted at runtime:
+
+```
+$ mediator settings 
+Get fresh list of workflows from SC...
+SecureChange Username : securechange_admin
+SecureChange Password : 
+                        ---
+SecureChange Host : 
+                    ---
+OK !
+Getting settings from server...    OK !
+Get list of registered trigger scripts from backend...    OK !
+
+******************************************
+Choose a workflow (! indicates workflows without settings):
+ - 1: Rule Recertification !
+ - 2: Opening Firewall Request !
+ - 3: Simple Workflow !
+ - 4: Generic / Provisioning !
+ - 5: Exit
+ - 6: Save and exit
+ : 1
+```
+*NB : The workflows in previous list is purely fictional. When you run the command, `mediator-cli` will display the list of all active workflows in your instance.*
+
+
+Select a workflow. `mediator-cli` will ask you if you want to add or edit a rule if previous settings exist for this workflow. In our example, no settings were found for selected workflow
+```
+Do you want to edit a rule or add a new one
+ - 1 : New rule
+ - 2*: Exit
+ : 
+```
+
+**Definition**: a `rule` is composed by a `script`, a `trigger` and sometimes and workflow `step`. It will tell `mediator-client` to run the script whenever the selected  trigger is fired by Securechange.
+Some triggers can be fired in several workflow steps. If you use these in your rule, you will be ask to select a workflow step.
+
+Rule creation for a "simple" trigger will look like this:
+```
+Do you want to edit a rule or add a new one
+ - 1 : New rule
+ - 2*: Exit
+ : 1
+Choose a trigger
+ - 1: Create
+ - 2: Close
+ - 3: Cancel
+ - 4: Reject
+ - 5: Resubmit
+ - 6: Resolve
+ - 7: Advance
+ - 8: Redo
+ - 9: Reopen
+ - 10: Automatic step failed
+ : 1
+Choose a script from list of registered trigger scripts
+ - 1: script1
+ - 2: script2
+ - 3: script3
+ : 3
+
+Do you want to edit a rule or add a new one
+ - 1 : Trigger Create fires script script3
+ - 2 : New rule
+ - 3*: Exit
+ : 
+```
+
+Rule creation for a trigger that requires a step will look like this:
+```
+Do you want to edit a rule or add a new one
+ - 1 : Trigger Create fires script coucou
+ - 2 : New rule
+ - 3*: Exit
+ : 2
+Choose a trigger
+ - 1: Create
+ - 2: Close
+ - 3: Cancel
+ - 4: Reject
+ - 5: Resubmit
+ - 6: Resolve
+ - 7: Advance
+ - 8: Redo
+ - 9: Reopen
+ - 10: Automatic step failed
+ : 7
+Choose a step:
+ - 1: Security review recertification
+ - 2: Risk policy update process
+ : 1
+Choose a script from list of registered trigger scripts
+ - 1: script1
+ - 2: script2
+ - 3: script3
+ : 2
+
+Do you want to edit a rule or add a new one
+ - 1 : Trigger Create fires script script3
+ - 2 : Trigger Advance on step Security review recertification fires script script2
+ - 3 : New rule
+ - 4*: Exit
+ : 
+```
+
+Add all the required rules for all the workflows you need to add settings for. 
+
+When you're done, select `Save and exit` from workflow list:
+```
+******************************************
+Choose a workflow (! indicates workflows without settings):
+ - 1: Rule Recertification !
+ - 2: Opening Firewall Request !
+ - 3: Simple Workflow !
+ - 4: Generic / Provisioning !
+ - 5: Exit
+ - 6: Save and exit
+ : 6
+ Exiting...
+Sending settings to backend for upload to Securechange...    OK !
+```
+
+### Securechange API configuration
+
+`mediator-client` needs to be registered in SecurechangeAPI. This task can be done via the Securechange GUI but can be particularly cumbersome in our situation.
+
+It can also be done by `mediator-cli` through its `securechange-api` command:
+
+```
+$ mediator securechange-api --help
+If no subcommand is provided, show SecurechangeAPI configuration.
+
+Usage:
+  mediator securechange-api [flags]
+  mediator securechange-api [command]
+
+Aliases:
+  securechange-api, scapi, sc, api
+
+Available Commands:
+  create      Create a new SecurechangeAPI trigger configuration
+  delete      Delete SecurechangeAPI configuration
+  show        Show SecurechangeAPI configuration
+
+Flags:
+  -h, --help               help for securechange-api
+  -H, --host string        SecureChange host. Will be prompted if not provided.
+  -P, --password string    SecureChange password. Will be prompted if not provided.
+  -U, --username string    SecureChange user name. Will be prompted if not provided.
+  -w, --workflow strings   Comma separated list of workflow names. Only show SecurchangeAPI configuration that includes a workflow in the provided list. Can also be used multiple times.
+```
+
+#### Show current configuration
+
+When no subcommand is provided or when the `show` subcommand is used, the Securechange API configuration will be shown.
+
+You can see which `mediator-client` helper will be run when a trigger is fired. (there is one helper per trigger). This may be a long list.
+
+The following example show a fictional piece of configuration where the `mediator-client` helper `mediator-client-advance.sh` is registered for trigger `ADVANCE` for workflow `Rule Recertification` :
+```
+*** #94 Rule Recertification ADVANCE
+  - Execute: Rule Recertification "/opt/tufin/data/securechange/scripts/mediator-client-advance.sh"
+  - Trigger groups:
+    - Name: trigger Advance
+    - Workflow: Rule Recertification
+    - Triggers: [ADVANCE]
+```
+
+#### Configure a workflow in Securechange API
+
+The easiest and most robust way to configure Securechange is via the fully automatic version of `securechange-api` command of `mediator-cli`.
+
+We suggest that you use it for all your workflows:
+```
+$ mediator securechange-api create -w "Rule Recertification" --all-triggers
+SecureChange Host : <SC host or IP address>
+SecureChange Username : securechange_admin
+SecureChange Password : 
+                        ---
+Get fresh list of workflows from SC...
+OK !
+SecurechangeAPI trigger was created for trigger(s) [Create Close Cancel Reject Resubmit Resolve Advance Redo Reopen Automatic step failed].
+```
+
+Just replace "Rule Recertification" by the name of your workflow.
+
+#### Manually configure a workflow in Securechange API
+
+You can also use the previous command without a workflow name to select your workflow from a list.
+
+If you do not provide the `--all-triggers`, you can select the trigger you want.
+
+*We do not recommend this usage. Do it only if you know what you're doing*
+
