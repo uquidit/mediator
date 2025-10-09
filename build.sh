@@ -54,6 +54,7 @@ for elt in mediator-client mediator-server mediator-cli; do
 
     cd "${elt}"
     go build -o "${out}" --ldflags="\
+        -extldflags '-static'  \
         -X 'main.Version=${version}'\
         -X 'uqtu/mediator/mediatorscript.salt=${salt}' \
         -X 'uqtu/mediator/mediatorscript.pepper=${pepper}' \
