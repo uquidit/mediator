@@ -76,9 +76,18 @@ $ go build --ldflags="\
 
 Note: you can use escaped double-quotes to use spaces if required.
 
+### The easy way
+
+There is a builder script that takes care of everything for you. Simply run:
+```sh
+$ ./build.sh
+```
+And you are good to deploy the `mediator.tar.gz` artifact!
+
+
 # Installation & Configuration
 
-Mediator executables must be installed on your server.    
+Mediator executables must be installed on your server.
 
 ## Mediator-server
 
