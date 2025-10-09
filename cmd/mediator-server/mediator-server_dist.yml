@@ -33,9 +33,9 @@ mediatorscript:
     # full path to the script that uploads generated mediator-client settings to securechange
     # it will be called using '/usr/bin/sudo' with no password
     # sudoers must be configured accordingly
-    uploadscript: /opt/uquidit.co/lib/bash/upload-mediator-conf.sh
+    uploadscript: /opt/uquidit.co/lib/bash/mediator-conf-upload.sh
 
     # full path to the script that downloads mediator-client settings from securechange
     # it will be called using '/usr/bin/sudo' with no password
     # sudoers must be configured accordingly
-    downloadscript: /opt/uquidit.co/lib/bash/download-mediator-conf.sh
+    downloadscript: /opt/uquidit.co/lib/bash/mediator-conf-download.sh
