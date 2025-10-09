@@ -76,9 +76,18 @@ $ go build --ldflags="\
 
 Note: you can use escaped double-quotes to use spaces if required.
 
+### The easy way
+
+There is a builder script that takes care of everything for you. Simply run:
+```sh
+$ ./build.sh
+```
+And you are good to deploy the `mediator.tar.gz` artifact!
+
+
 # Installation & Configuration
 
-Mediator executables must be installed on your server.    
+Mediator executables must be installed on your server.
 
 ## Mediator-server
 
@@ -87,19 +96,19 @@ Mediator executables must be installed on your server.
 The `mediator-server` is composed of 3 files:
 
 * The main executable file: `mediator-server`;
-* The distribution configuration file: `mediator-server-dist.yml`. which will be used as a starting point for our configuration. It provides the comprehensive list of available configuration pieces along with their documentation;
+* The distribution configuration file: `mediator-server_dist.yml`. which will be used as a starting point for our configuration. It provides the comprehensive list of available configuration pieces along with their documentation;
 * The Command-Line Interface (CLI) executable file: `mediator-cli` used to manage the server.
 
 ### Configuration
 
-We provide a distribution configuration file named `mediator-server-dist.yml` as a starting point to build your own configuration.
+We provide a distribution configuration file named `mediator-server_dist.yml` as a starting point to build your own configuration.
 
 You will find a comprehensive list of documented configuration entries.
 
 We recommend that you keep an untouched copy of the original version of the distribution configuration file.
 
 Follow these steps to configure the `mediator-server`:
-1. Copy the distribution configuration file: `$ cp mediator-server-dist.yml mediator-server.yml`
+1. Copy the distribution configuration file: `$ cp mediator-server_dist.yml mediator-server.yml`
 
 2. Edit `mediator-server.yml` with your favorite text editor and set the required values according to your infrastructure and save the file
 
