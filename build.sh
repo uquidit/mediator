@@ -24,6 +24,10 @@ function fatal(){
 trap 'fatal "Caught Ctrl-C"' INT
 trap 'cleanup' EXIT
 
+# Make the version just the date
+# It's an useful info, yet easy to retrieve
+version=$(date '+%Y%m%d%H%M%S')
+
 # Generate some random strings
 salt=$(tr -cd '[:alnum:]' < /dev/urandom | head -c16)
 pepper=$(tr -cd '[:alnum:]' < /dev/urandom | head -c16)
@@ -50,6 +54,7 @@ for elt in mediator-client mediator-server mediator-cli; do
 
     cd "${elt}"
     go build -o "${out}" --ldflags="\
+        -X 'main.Version=${version}'\
         -X 'uqtu/mediator/mediatorscript.salt=${salt}' \
         -X 'uqtu/mediator/mediatorscript.pepper=${pepper}' \
         -X 'uqtu/mediator/mediatorscript.secretKey=${key}' \
