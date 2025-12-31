@@ -12,6 +12,7 @@ const (
 	ScriptCondition
 	ScriptTask
 	ScriptAssignment
+	RiskAnalysis
 	ScriptAll
 )
 
@@ -20,6 +21,7 @@ var toString = map[ScriptType]string{
 	ScriptCondition:  "Scripted Condition script",
 	ScriptTask:       "Scripted Task script",
 	ScriptAssignment: "Pre-Assignment script",
+	RiskAnalysis:     "Risk Analysis script",
 }
 
 var toSlug = map[ScriptType]string{
@@ -27,6 +29,7 @@ var toSlug = map[ScriptType]string{
 	ScriptCondition:  "scripted-condition",
 	ScriptTask:       "scripted-task",
 	ScriptAssignment: "pre-assignment",
+	RiskAnalysis:     "risk-analysis",
 }
 
 var toID = map[string]ScriptType{
@@ -34,6 +37,7 @@ var toID = map[string]ScriptType{
 	"Scripted Condition script": ScriptCondition,
 	"Scripted Task script":      ScriptTask,
 	"Pre-Assignment script":     ScriptAssignment,
+	"Risk Analysis script":      RiskAnalysis,
 }
 
 var fromSlugToID = map[string]ScriptType{
@@ -41,6 +45,7 @@ var fromSlugToID = map[string]ScriptType{
 	"scripted-condition": ScriptCondition,
 	"scripted-task":      ScriptTask,
 	"pre-assignment":     ScriptAssignment,
+	"risk-analysis":      RiskAnalysis,
 }
 
 func (ft ScriptType) String() string {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
 
 func TestAllScripts(c echo.Context) error {
@@ -77,10 +78,12 @@ func ExecuteScript(c echo.Context) error {
 
 	} else if script, err := GetScriptByName(scriptname); err != nil {
 		res.Error = fmt.Sprintf("cannot execute script '%s': %v", scriptname, err)
+		logrus.Error(res.Error)
 		return c.JSON(http.StatusBadRequest, res)
 
 	} else if err := script.AsyncRun(&ti); err != nil {
 		res.Error = fmt.Sprintf("error while executing script '%s': %v", scriptname, err)
+		logrus.Error(res.Error)
 		return c.JSON(http.StatusBadRequest, res)
 
 	} else {
@@ -113,5 +116,12 @@ func ExecuteScriptedTask(c echo.Context) error {
 func ExecutePreAssignment(c echo.Context) error {
 	var rr RunResponse
 	genericHandler(ScriptAssignment, "", &rr, c)
+	return rr.SendResponse(c)
+}
+
+func ExecuteRiskAnalysis(c echo.Context) error {
+	var rr RunResponse
+	genericHandler(RiskAnalysis, "", &rr, c)
+
 	return rr.SendResponse(c)
 }

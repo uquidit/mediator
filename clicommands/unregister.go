@@ -3,7 +3,6 @@ package clicommands
 import (
 	"fmt"
 	"net/http"
-	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -71,8 +70,8 @@ func unregisterScript(script_type mediatorscript.ScriptType, name string) error 
 		endpoint = fmt.Sprintf("unregister/%s", script_type.Slug())
 	}
 
-	if _, err := apiclient.RunDELETEwithToken(endpoint, "json", nil); err != nil {
-		if ignore_unregister_notfound_error && apiclient.GetLastRequestStatusCode() == http.StatusNotFound {
+	if _, err := BackendClient.RunDELETEwithToken(endpoint, "json", nil); err != nil {
+		if ignore_unregister_notfound_error && BackendClient.GetLastRequestStatusCode() == http.StatusNotFound {
 			fmt.Println("[WARNING] Script was not found.")
 			return nil
 		}

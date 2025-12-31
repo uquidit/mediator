@@ -1,7 +1,6 @@
 package securechangeapi
 
 import (
-	"fmt"
 	"uqtu/mediator/console"
 	"uqtu/mediator/scworkflow"
 )
@@ -85,8 +84,6 @@ func (mgr *scManager) getSecurechangeCredentials() error {
 		}
 		if mgr.SC_pwd, err = console.GetPassword("SecureChange Password"); err != nil {
 			return err
-		} else {
-			fmt.Println("---")
 		}
 	}
 

@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"strings"
-	"uqtu/mediator/totp"
+	"sync"
+	"time"
 )
 
 type Client struct {
@@ -21,17 +23,67 @@ type Client struct {
 	PasswordField string
 }
 
-func NewClient(urlprefix string, username string, password string, InsecureSkipVerify bool) *Client {
-	// get http client with certificate validation disabled
+var (
+	http_client_verify   map[uint]*http.Client
+	http_client_noverify map[uint]*http.Client
+	mutex                sync.Mutex
+)
+
+func init() {
+	http_client_verify = make(map[uint]*http.Client)
+	http_client_noverify = make(map[uint]*http.Client)
+}
+
+func newClient(dial_timeout uint, InsecureSkipVerify bool) *http.Client {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if InsecureSkipVerify {
+		if c, ok := http_client_noverify[dial_timeout]; ok {
+			return c
+		}
+	} else {
+		if c, ok := http_client_verify[dial_timeout]; ok {
+			return c
+		}
+
+	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: InsecureSkipVerify},
+		Dial: (&net.Dialer{
+			Timeout: time.Duration(dial_timeout) * time.Second,
+		}).Dial,
 	}
+	http_client := &http.Client{Transport: tr}
 
+	if InsecureSkipVerify {
+		http_client_noverify[dial_timeout] = http_client
+	} else {
+		http_client_verify[dial_timeout] = http_client
+	}
+	return http_client
+}
+
+func NewClientWithDialTimeout(urlprefix string, username string, password string, InsecureSkipVerify bool, dial_timeout uint) *Client {
+	// get http client
+	http_client := newClient(dial_timeout, InsecureSkipVerify)
+
+	return newRichClientFromHTTPClient(urlprefix, username, password, http_client)
+}
+
+func NewClient(urlprefix string, username string, password string, InsecureSkipVerify bool) *Client {
+	// get http client with fixed timeout
+	http_client := newClient(10, InsecureSkipVerify)
+
+	return newRichClientFromHTTPClient(urlprefix, username, password, http_client)
+}
+
+func newRichClientFromHTTPClient(urlprefix string, username string, password string, http_client *http.Client) *Client {
 	// remove any trailing '/' from urlprefix
 	urlprefix = strings.TrimSuffix(urlprefix, "/")
 
 	c := Client{
-		client:        &http.Client{Transport: tr},
+		client:        http_client,
 		urlprefix:     urlprefix,
 		username:      username,
 		password:      password,
@@ -39,24 +91,6 @@ func NewClient(urlprefix string, username string, password string, InsecureSkipV
 		PasswordField: "password",
 	}
 	return &c
-}
-
-func NewClientWithOTP(urlprefix string, InsecureSkipVerify bool) (*Client, error) {
-
-	client := NewClient(urlprefix, "", "", InsecureSkipVerify)
-
-	if err := client.SetToken(); err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func (c *Client) SetToken() error {
-	var err error
-	if c.Token, err = totp.GetKey(); err != nil {
-		return err
-	}
-	return nil
 }
 
 /****** GET ******/
@@ -212,19 +246,20 @@ func (c *Client) newWithBody(method string, url_suffix string, body io.Reader, c
 		}
 	}
 
-	if auth_mode == AuthMode_Basic {
+	switch auth_mode {
+	case AuthMode_Basic:
 		if c.username == "" || c.password == "" {
 			return nil, fmt.Errorf("no auth information")
 		}
 		req.httpreq.SetBasicAuth(c.username, c.password)
 
-	} else if auth_mode == AuthMode_Token {
+	case AuthMode_Token:
 		if c.Token == "" {
 			return nil, fmt.Errorf("token missing")
 		}
 		req.SetHeader("Authorization", fmt.Sprintf("Bearer %s", c.Token))
 		c.Token = ""
-	} else if auth_mode == AuthMode_Cookie {
+	case AuthMode_Cookie:
 		if c.Token == "" {
 			return nil, fmt.Errorf("token missing")
 		}

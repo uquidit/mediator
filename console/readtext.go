@@ -163,8 +163,8 @@ func GetPassword(label string) (string, error) {
 	}
 
 	// defer commands order is important
+	defer fmt.Println()
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
-	defer fmt.Printf("\n")
 
 	if b, err := term.ReadPassword(int(os.Stdin.Fd())); err != nil {
 		return "", err

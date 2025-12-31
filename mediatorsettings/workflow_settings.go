@@ -6,9 +6,29 @@ import (
 )
 
 type WFSettings struct {
-	WFname string     `json:"wf_name,omitempty"`
-	WFid   int        `json:"wf_id"`
-	Rules  RulesSlice `json:"settings"`
+	WFname      string     `json:"wf_name,omitempty"`
+	WFid        int        `json:"wf_id"`
+	Rules       RulesSlice `json:"settings"`
+	Description string     `json:"description"`
+}
+
+// Checks if settings are valid:
+// - wf name is not empty
+// - wf ID is set
+// - all rules are valid
+func (w *WFSettings) isValid() error {
+	if w.WFname == "" {
+		return ErrNoWorkflowName
+	}
+	if w.WFid == 0 {
+		return ErrNoWorkflowID
+	}
+	for _, r := range w.Rules {
+		if err := r.isValid(); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalidSettings, err)
+		}
+	}
+	return nil
 }
 
 // Returns the names of the scripts attached to provided step and trigger

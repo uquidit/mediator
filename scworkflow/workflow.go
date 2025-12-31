@@ -13,11 +13,12 @@ type WorkflowXML struct {
 	HasSettings bool
 }
 type WorkflowStepsXML []struct {
-	Name string `xml:"name" json:"name"`
+	Name     string `xml:"name" json:"name"`
+	IsActive bool   `xml:"is_active" json:"is_active"`
 }
 type Workflows struct {
-	XMLName   xml.Name      `xml:"workflows" json:"-"`
-	Workflows []WorkflowXML `xml:"workflow" json:"workflow"`
+	XMLName   xml.Name       `xml:"workflows" json:"-"`
+	Workflows []*WorkflowXML `xml:"workflow" json:"workflow"`
 }
 
 type WorkflowsStepsList map[string][]string
@@ -25,7 +26,7 @@ type WorkflowsStepsList map[string][]string
 func (scws Workflows) GetWorkflowByID(id int) *WorkflowXML {
 	for _, w := range scws.Workflows {
 		if w.Id == id {
-			return &w
+			return w
 		}
 	}
 	return nil
@@ -45,6 +46,9 @@ func (w WorkflowXML) GetSteps() []string {
 	}
 	steps := []string{}
 	for _, s := range w.Steps {
+		if !s.IsActive {
+			continue
+		}
 		steps = append(steps, s.Name)
 	}
 	return steps
@@ -110,7 +114,7 @@ func GetSecurechangeWorkflowsUsingRequester(rr Requester, get_steps bool) (*Work
 		}
 
 		// store detailed list in place of light list
-		l := []WorkflowXML{}
+		l := []*WorkflowXML{}
 		for {
 			select {
 			case err := <-err_ch:
@@ -118,7 +122,7 @@ func GetSecurechangeWorkflowsUsingRequester(rr Requester, get_steps bool) (*Work
 				// hopefully any remaining routines will end nicely (buffered channels)
 				return nil, err
 			case wf := <-ch:
-				l = append(l, *wf)
+				l = append(l, wf)
 			default:
 				if len(l) == len(workflowsSecureChange.Workflows) {
 					// we got them all

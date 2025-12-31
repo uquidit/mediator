@@ -37,6 +37,8 @@ func getInteractiveScriptCmd(script_type mediatorscript.ScriptType) *cobra.Comma
 		cmd.Use = "condition"
 	case mediatorscript.ScriptTask:
 		cmd.Use = "task"
+	case mediatorscript.RiskAnalysis:
+		cmd.Use = "risk-analysis"
 	}
 
 	cmd.Short = fmt.Sprintf("Show %s", script_type)

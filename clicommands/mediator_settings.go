@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"uqtu/mediator/apiclient"
 	"uqtu/mediator/console"
 	"uqtu/mediator/mediatorsettings"
 	"uqtu/mediator/scworkflow"
@@ -66,7 +65,7 @@ This is an interactive command: required information will be prompted to you.`,
 
 				endpoint := fmt.Sprintf("%s?%s", Settings_endpoint, SC_querystring)
 
-				if _, err := apiclient.RunGETwithToken(endpoint, "json", &wf_settings_slice); err != nil {
+				if _, err := BackendClient.RunGETwithToken(endpoint, "json", &wf_settings_slice); err != nil {
 					return err
 				} else {
 					WFsettings = wf_settings_slice.GetMap()
@@ -132,12 +131,26 @@ This is an interactive command: required information will be prompted to you.`,
 
 				// Any settings for this WF ?
 				for {
-					index, new, exit := selectRule(WFsettings[scwf.Name].Rules)
+					fmt.Printf("\n\nSettings of workflow '%s'\n", scwf.Name)
+					if WFsettings[scwf.Name].Description != "" {
+						fmt.Println("Description :")
+						fmt.Println(WFsettings[scwf.Name].Description)
+					}
+					index, new, exit, edit_desc := selectRule(WFsettings[scwf.Name].Rules)
 					if exit {
 						break
 					}
+					if edit_desc {
+						d, err := console.GetTextWithDefault(
+							"Rule comment", WFsettings[scwf.Name].Description)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						} else {
+							WFsettings[scwf.Name].Description = d
+						}
 
-					if new {
+					} else if new {
 						rule := getNewRule(scwf.GetSteps())
 						WFsettings[scwf.Name].Rules = append(WFsettings[scwf.Name].Rules, rule)
 					} else {
@@ -173,7 +186,7 @@ This is an interactive command: required information will be prompted to you.`,
 
 				if jsoninput, err := json.Marshal(WFsettings.GetSlice()); err != nil {
 					return err
-				} else if _, err := apiclient.RunPOSTwithToken(endpoint, bytes.NewBuffer(jsoninput), "json", nil); err != nil {
+				} else if _, err := BackendClient.RunPOSTwithToken(endpoint, bytes.NewBuffer(jsoninput), "json", nil); err != nil {
 					return err
 				}
 				fmt.Println("    OK !")
@@ -234,8 +247,6 @@ func setSCcredentials() error {
 		}
 		if SC_pwd, err = console.GetPassword("SecureChange Password"); err != nil {
 			return err
-		} else {
-			fmt.Println("---")
 		}
 	}
 
@@ -244,10 +255,8 @@ func setSCcredentials() error {
 		if SC_host != "" {
 			break
 		}
-		if SC_host, err = console.GetPassword("SecureChange Host"); err != nil {
+		if SC_host, err = console.GetText("SecureChange Host"); err != nil {
 			return err
-		} else {
-			fmt.Println("---")
 		}
 	}
 

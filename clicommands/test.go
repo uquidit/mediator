@@ -2,7 +2,6 @@ package clicommands
 
 import (
 	"fmt"
-	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -67,7 +66,7 @@ func testScript(script_type mediatorscript.ScriptType, name string) error {
 	}
 
 	results := mediatorscript.RunResponse{}
-	if _, err := apiclient.RunPOSTwithToken(endpoint, nil, "json", &results); err == nil {
+	if _, err := BackendClient.RunPOSTwithToken(endpoint, nil, "json", &results); err == nil {
 
 		// double check for errors
 		if results.Error != "" {
@@ -102,15 +101,15 @@ func testScript(script_type mediatorscript.ScriptType, name string) error {
 				fmt.Printf("   - execution error: %s\n", res.ScriptError)
 			}
 
-			switch {
-			case res.Type == mediatorscript.ScriptTrigger || res.Type == mediatorscript.ScriptAssignment:
+			switch res.Type {
+			case mediatorscript.ScriptTrigger, mediatorscript.ScriptAssignment:
 				if res.ExitCode == 0 {
 					fmt.Printf("   - test %s: OK\n", name)
 				} else {
 					fmt.Printf("   - test %s: FAILED\n", name)
 					nberrors += 1
 				}
-			case res.Type == mediatorscript.ScriptCondition || res.Type == mediatorscript.ScriptTask:
+			case mediatorscript.ScriptCondition, mediatorscript.ScriptTask, mediatorscript.RiskAnalysis:
 				if res.ExitCode == 0 && res.StdOut == "<response><condition_result> true </condition_result></response>" {
 					fmt.Printf("   - test %s: OK\n", name)
 				} else {

@@ -12,15 +12,17 @@ import (
 func RegisterScript(c echo.Context) error {
 	var s Script
 	if err := c.Bind(&s); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("error while processing parameters: %s", err.Error())})
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("error while processing parameters: %w", err))
 	}
 	if err := s.Save(); err != nil {
 		if registerErrorIsBadRequest(err) {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("cannot save script: %s", err.Error())})
+			return echo.NewHTTPError(http.StatusBadRequest, err)
+		} else if errors.Is(err, ErrRegisterAlreadyExistWithDifferentType) {
+			return echo.NewHTTPError(http.StatusConflict, err)
 		} else if errors.Is(err, ErrRegisterAlreadyExist) {
 			return c.NoContent(http.StatusAlreadyReported)
 		} else {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("cannot save script: %s", err.Error())})
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("cannot save script: %w", err))
 		}
 
 	}
@@ -30,12 +32,13 @@ func RegisterScript(c echo.Context) error {
 func UnregisterScript(c echo.Context) error {
 	//check slug is valid, complain otherwise
 	if slug := c.Param("slug"); !IsScriptTypeSlug(slug) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("%v: %v", ErrUnknownScriptType, slug)})
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("%w: %s", ErrUnknownScriptType, slug))
 
 	} else if t, err := GetTypeFromSlug(slug); err != nil { // get type from slug
 		// this should never happen so return a internal server error
-		logrus.Warningf("could not get script type from slug '%s': %v", slug, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("could not get script type from slug '%s': %v", slug, err)})
+		msg := fmt.Sprintf("could not get script type from slug '%s': %v", slug, err)
+		logrus.Warning(msg)
+		return echo.NewHTTPError(http.StatusInternalServerError, errors.New(msg))
 
 	} else if scriptname := c.Param("script"); scriptname != "" {
 		// a name was specified.
@@ -43,24 +46,24 @@ func UnregisterScript(c echo.Context) error {
 		if script, err := GetScriptByName(scriptname); err != nil {
 			// could not find any script with that name: complain
 			if errors.Is(err, ErrScriptNotFound) {
-				return c.JSON(http.StatusNotFound, map[string]string{"error": fmt.Sprintf("%v: '%s'", err, scriptname)})
+				return echo.NewHTTPError(http.StatusNotFound, fmt.Errorf("%v: '%s'", err, scriptname))
 			} else {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error while searching script '%s': %v", scriptname, err)})
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("error while searching script '%s': %w", scriptname, err))
 			}
 
 		} else if script.Type != t {
 			// ok, we've got a script but it's not the expected type: complain
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Script '%s' is not a %s", scriptname, t)})
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("Script '%s' is not a %s", scriptname, t))
 		}
 
 		if err := RemoveScriptByName(scriptname); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("error while unregitering script named %s: %v", scriptname, err)})
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("error while unregistering script named %s: %w", scriptname, err))
 		} else {
 			return c.NoContent(http.StatusNoContent)
 		}
 
 	} else if err := RemoveScriptByType(t); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("error while unregistering %s: %v", t, err)})
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("error while unregistering %s: %w", t, err))
 
 	} else {
 		return c.NoContent(http.StatusNoContent)
@@ -69,7 +72,7 @@ func UnregisterScript(c echo.Context) error {
 
 func UnregisterAll(c echo.Context) error {
 	if err := RemoveScriptByType(ScriptAll); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("error while unregistering all scripts: %v", err)})
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("error unregistering all scripts: %w", err))
 
 	} else {
 		return c.NoContent(http.StatusNoContent)
@@ -77,22 +80,38 @@ func UnregisterAll(c echo.Context) error {
 }
 
 func GetAll(c echo.Context) error {
-	list := make([]*Script, 0, len(allScripts))
-	for _, s := range allScripts {
-		list = append(list, s)
-	}
+	list := GetScriptByType(ScriptAll)
 	return c.JSON(http.StatusOK, list)
+}
+
+func GetAllByType(c echo.Context) error {
+	//check slug is valid, complain otherwise
+	if slug := c.Param("slug"); !IsScriptTypeSlug(slug) {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("%w: %v", ErrUnknownScriptType, slug))
+
+	} else if t, err := GetTypeFromSlug(slug); err != nil { // get type from slug
+		// this should never happen so return a internal server error
+		msg := fmt.Sprintf("could not get script type from slug '%s': %v", slug, err)
+		logrus.Warning(msg)
+		return echo.NewHTTPError(http.StatusInternalServerError, errors.New(msg))
+
+	} else {
+
+		list := GetScriptByType(t)
+		return c.JSON(http.StatusOK, list)
+	}
 }
 
 func RefreshScript(c echo.Context) error {
 	//check slug is valid, complain otherwise
 	if slug := c.Param("slug"); !IsScriptTypeSlug(slug) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("%v: %v", ErrUnknownScriptType, slug)})
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("%w: %v", ErrUnknownScriptType, slug))
 
 	} else if t, err := GetTypeFromSlug(slug); err != nil { // get type from slug
 		// this should never happen so return a internal server error
-		logrus.Warningf("could not get script type from slug '%s': %v", slug, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("could not get script type from slug '%s': %v", slug, err)})
+		msg := fmt.Sprintf("could not get script type from slug '%s': %v", slug, err)
+		logrus.Warning(msg)
+		return echo.NewHTTPError(http.StatusInternalServerError, errors.New(msg))
 
 	} else if scriptname := c.Param("script"); scriptname != "" {
 		// a name was specified.
@@ -100,24 +119,24 @@ func RefreshScript(c echo.Context) error {
 		if script, err := GetScriptByName(scriptname); err != nil {
 			// could not find any script with that name: complain
 			if errors.Is(err, ErrScriptNotFound) {
-				return c.JSON(http.StatusNotFound, map[string]string{"error": fmt.Sprintf("%v: '%s'", err, scriptname)})
+				return echo.NewHTTPError(http.StatusNotFound, fmt.Errorf("%w: '%s'", err, scriptname))
 			} else {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error while searching script '%s': %v", scriptname, err)})
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("error while searching script '%s': %w", scriptname, err))
 			}
 
 		} else if script.Type != t {
 			// ok, we've got a script but it's not the expected type: complain
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Script '%s' is not a %s", scriptname, t)})
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Errorf("Script '%s' is not a %s", scriptname, t))
 
 		} else if err := script.Refresh(); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error while refreshing %s: %v", script, err)})
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("error while refreshing %s: %w", script, err))
 		}
 
 	} else {
 		l := GetScriptByType(t)
 		for _, s := range l {
 			if err := s.Refresh(); err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error while refreshing %s: %v", s, err)})
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("error while refreshing %s: %w", s, err))
 			}
 		}
 	}
@@ -127,7 +146,7 @@ func RefreshScript(c echo.Context) error {
 func RefreshAllScript(c echo.Context) error {
 	for _, s := range allScripts {
 		if err := s.Refresh(); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("error while refreshing %s: %v", s, err)})
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("error while refreshing %s: %w", s, err))
 		}
 	}
 	return c.NoContent(http.StatusNoContent)

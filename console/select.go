@@ -2,7 +2,9 @@ package console
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 type Item interface {
@@ -50,6 +52,15 @@ func SelectFromList(label string, options []string, defaultvalue *string) (strin
 	var text string
 	text = fmt.Sprintf("%s\n", label)
 
+	switch len(options) {
+	case 0:
+		return "", ErrEmptyOptionList
+	case 1:
+		// return if there is only one option in list
+		fmt.Printf("%s :\n!! Unique option has been selected: %s\n\n", label, options[0])
+		return options[0], nil
+	}
+
 	for i, opt := range options {
 		if defaultvalue != nil {
 			if *defaultvalue == opt {
@@ -89,5 +100,86 @@ func SelectFromList(label string, options []string, defaultvalue *string) (strin
 				fmt.Printf("'%s' is not a valid choice.\n", txt)
 			}
 		}
+	}
+}
+
+const (
+	cmdALL    = "all"
+	cmdNONE   = "none"
+	cmdCANCEL = "cancel"
+	cmdOK     = "ok"
+)
+
+func createPrintedList(options []string, selection []string) string {
+	box := ""
+	list := []string{}
+
+	for i, opt := range options {
+		if slices.Contains(selection, opt) {
+			box = "[X]"
+		} else {
+			box = "[ ]"
+		}
+		list = append(list, fmt.Sprintf(" %s %d: %s", box, i+1, opt))
+	}
+	// add commands
+	list = append(list, "------")
+
+	if len(options) != len(selection) {
+		list = append(list, fmt.Sprintf(" - %s    : Select all", cmdALL))
+	}
+	if len(selection) != 0 {
+		list = append(list, fmt.Sprintf(" - %s   : Select none", cmdNONE))
+	}
+	list = append(list, fmt.Sprintf(" - %s     : Save selection", cmdOK))
+	list = append(list, fmt.Sprintf(" - %s : Cancel\n", cmdCANCEL))
+
+	return strings.Join(list, "\n")
+}
+
+func SelectManyFromList(label string, options []string, selection []string) ([]string, error) {
+	var (
+		text string
+	)
+	if selection == nil {
+		selection = make([]string, 0)
+	}
+	for {
+		text = label + "\n" + createPrintedList(options, selection)
+		if txt, err := GetText(text); err != nil {
+			// return if getText() fails
+			return nil, err
+
+		} else {
+			switch txt {
+			case cmdALL:
+				selection = make([]string, len(options))
+				copy(selection, options)
+			case cmdNONE:
+				selection = []string{}
+			case cmdCANCEL:
+				return nil, nil
+			case cmdOK:
+				return selection, nil
+			default:
+				if value, err := strconv.Atoi(txt); err != nil {
+					// do not return if conv fails. stay in loop
+					fmt.Printf("'%s' is not a valid choice.\n", txt)
+				} else {
+					if 0 < value && value <= len(options) {
+						chosen_item := options[value-1]
+						if index := slices.Index(selection, chosen_item); index == -1 {
+							selection = append(selection, chosen_item)
+						} else {
+							selection = slices.Delete(selection, index, index+1)
+						}
+					} else {
+						// do not return if out of bounds. stay in loop
+						fmt.Printf("'%s' is not a valid choice.\n", txt)
+					}
+				}
+			}
+		}
+		fmt.Println()
 	}
 }

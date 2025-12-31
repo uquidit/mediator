@@ -30,15 +30,6 @@ var (
 	trigger scworkflow.SecurechangeTrigger
 )
 
-type arguments struct {
-	data_filename     string
-	scriptedCondition bool
-	preAssignment     bool
-	scriptedTask      bool
-	trigger           string
-	settings_filename string
-}
-
 func main() {
 	args := arguments{}
 	flag.StringVar(&args.data_filename, "file", "", "Read data from file instead of stdin.")
@@ -47,6 +38,7 @@ func main() {
 	flag.BoolVar(&args.scriptedCondition, "scripted-condition", false, "Tell mediator-client to request back-end to run special 'Scripted Condition' script.")
 	flag.BoolVar(&args.preAssignment, "pre-assignment", false, "Tell mediator-client to request back-end to run special 'Pre-Assignment' script.")
 	flag.BoolVar(&args.scriptedTask, "scripted-task", false, "Tell mediator-client to request back-end to run special 'Scripted Task' script.")
+	flag.BoolVar(&args.riskAnalysis, "risk-analysis", false, "Tell mediator-client to request back-end to run special 'Risk Analysis' script.")
 
 	// version
 	versionPtr := flag.Bool("version", false, "Print version number and exit.")
@@ -56,7 +48,8 @@ func main() {
 		fmt.Printf("Mediator version %s\n", Version)
 		os.Exit(0)
 	}
-	if t, err := checkArgumentsAndGetTrigger(flag.NArg(), args); err != nil {
+	args.positional = flag.Args()
+	if t, err := checkArgumentsAndGetTrigger(args); err != nil {
 		logrus.Fatal(err)
 	} else {
 		trigger = t
@@ -77,7 +70,8 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	if err := logger.InitAppLogger(
+	if _, err := logger.InitAppLogger(
+		true, // use default logger
 		GetLogLevel(conf.Configuration.Log.Level),
 		true, true, true, true, true, true, "",
 		conf.Configuration.Log.File); err != nil {
@@ -107,13 +101,13 @@ func main() {
 		logrus.Warningf("SSL verification will be skipped! Connection to backend is insecure!")
 	}
 
-	if args.scriptedCondition || args.preAssignment || args.scriptedTask {
+	if args.isInteractiveScript() {
 		logrus.Infof("Starting mediator-client for Interactive scripts")
 
 		// this function will terminate current process
 		// it will deal with all error cases and log accordingly
 		// actually, the code is in a separate function in an effort to keep main() short
-		runInteractiveScripts(args.scriptedCondition, args.preAssignment, args.scriptedTask, args.data_filename, &conf)
+		runInteractiveScripts(args, &conf)
 
 	}
 
@@ -288,12 +282,10 @@ func main() {
 	}
 }
 
-func checkArgumentsAndGetTrigger(nb_args int, args arguments) (scworkflow.SecurechangeTrigger, error) {
-	if args.scriptedCondition || args.preAssignment || args.scriptedTask {
-		if (args.scriptedCondition && args.preAssignment) ||
-			(args.scriptedCondition && args.scriptedTask) ||
-			(args.preAssignment && args.scriptedTask) {
-			return scworkflow.NO_TRIGGER, fmt.Errorf("only one of the 'scripted condition', 'scripted task' and 'pre assignment' flags should be used at a time")
+func checkArgumentsAndGetTrigger(args arguments) (scworkflow.SecurechangeTrigger, error) {
+	if args.isInteractiveScript() {
+		if err := args.isUniqueInteractiveScriptFlag(); err != nil {
+			return scworkflow.NO_TRIGGER, err
 		}
 		return scworkflow.NO_TRIGGER, nil
 	}
@@ -303,6 +295,7 @@ func checkArgumentsAndGetTrigger(nb_args int, args arguments) (scworkflow.Secure
 		return t, fmt.Errorf("unknown or empty trigger: %s", args.trigger)
 	}
 
+	nb_args := args.NPositional()
 	if nb_args != 1 {
 		return t, fmt.Errorf("wrong number of positional arguments: one expected, got %d", nb_args)
 	} else {

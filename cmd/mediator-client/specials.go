@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -12,17 +11,74 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func runInteractiveScripts(scriptedCondition bool, preAssignment bool, scriptedTask bool, datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
-	if (scriptedCondition && (preAssignment || scriptedTask)) ||
-		(preAssignment && (scriptedCondition || scriptedTask)) ||
-		(scriptedTask && (scriptedCondition || preAssignment)) {
-		logrus.Fatalf("Only one of the --scripted-condition --pre-assignment and --scripted-task flag can be used at a time.")
+func runInteractiveScripts(args arguments, conf *mediatorscript.MediatorLegacyConfiguration) {
+	switch {
+	case args.scriptedCondition:
+		runScriptedConditionScript(args.positional, args.data_filename, conf)
+	case args.scriptedTask:
+		runScriptedTaskScript(args.positional, args.data_filename, conf)
+	case args.preAssignment:
+		runPreAssignmentScript(args.data_filename, conf)
+	case args.riskAnalysis:
+		runRiskAnalysisScript(args.data_filename, conf)
 	}
+}
+
+func runScriptedConditionScript(args []string, datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
+	currScript := "Scripted Condition"
+	// get ticket ID from args
+	if len(args) != 1 {
+		logrus.Fatalf("wrong number of positional arguments : one expected when using --scripted-condition flag, got %d: %v ", len(args), args)
+	}
+	endpoint := fmt.Sprintf("execute-scripted-condition/%s", args[0]) // arg can be a ticket ID or the "test" keyword
+
+	if reqBody, err := getInputSource(datafilenameFlag); err != nil {
+		logrus.Fatal(err)
+
+	} else {
+		requestInteractiveScriptExecution(endpoint, currScript, reqBody, conf)
+	}
+}
+
+func runPreAssignmentScript(datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
+	currScript := "Pre-Assignment"
+	if reqBody, err := getInputSource(datafilenameFlag); err != nil {
+		logrus.Fatal(err)
+
+	} else {
+		requestInteractiveScriptExecution("execute-pre-assignment", currScript, reqBody, conf)
+	}
+}
+
+func runScriptedTaskScript(args []string, datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
+	currScript := "Scripted Task"
+	// get ticket ID from args
+	if len(args) != 1 {
+		logrus.Fatalf("wrong number of positional arguments : one expected when using --scripted-task flag, got %d: %v ", len(args), args)
+	}
+	endpoint := fmt.Sprintf("execute-scripted-task/%s", args[0]) // arg can be a ticket ID or the "test" keyword
+
+	if reqBody, err := getInputSource(datafilenameFlag); err != nil {
+		logrus.Fatal(err)
+
+	} else {
+		requestInteractiveScriptExecution(endpoint, currScript, reqBody, conf)
+	}
+}
+
+func runRiskAnalysisScript(datafilenameFlag string, conf *mediatorscript.MediatorLegacyConfiguration) {
+	currScript := "Risk Analysis"
+	if reqBody, err := getInputSource(datafilenameFlag); err != nil {
+		logrus.Fatal(err)
+
+	} else {
+		requestInteractiveScriptExecution("execute-risk-analysis", currScript, reqBody, conf)
+	}
+}
+
+func requestInteractiveScriptExecution(endpoint string, currScript string, reqBody io.Reader, conf *mediatorscript.MediatorLegacyConfiguration) {
 	var (
-		reqBody    io.Reader
-		endpoint   string
-		currScript string
-		err        error
+		err error
 	)
 
 	client := apiclient.NewClient(conf.Configuration.BackendURL, "", "", conf.Configuration.SSLSkipVerify)
@@ -31,47 +87,7 @@ func runInteractiveScripts(scriptedCondition bool, preAssignment bool, scriptedT
 		logrus.Fatal(err)
 	}
 
-	args := flag.Args()
-	switch {
-	case scriptedCondition:
-		currScript = "Scripted Condition"
-		// get ticket ID from args
-		if flag.NArg() != 1 {
-			logrus.Fatalf("wrong number of positional arguments : one expected when using --scripted-condition flag, got %d: %v ", flag.NArg(), args)
-		}
-		endpoint = fmt.Sprintf("execute-scripted-condition/%s", flag.Args()[0]) // arg can be a ticket ID or the "test" keyword
-
-	case preAssignment:
-		currScript = "Pre-Assignment"
-		// get ticket ID from args
-		if flag.NArg() != 0 && !(flag.NArg() == 1 && args[0] == "") {
-			logrus.Fatalf("wrong number of positional arguments : zero expected when using --pre-assignment flag, got %d: %v", flag.NArg(), args)
-		}
-
-		endpoint = "execute-pre-assignment"
-		var err error
-		if reqBody, err = getInputSource(datafilenameFlag); err != nil {
-			logrus.Fatal(err)
-
-		}
-
-	case scriptedTask:
-		currScript = "Scripted Task"
-		// get ticket ID from args
-		if flag.NArg() != 1 {
-			logrus.Fatalf("wrong number of positional arguments : one expected when using --scripted-task flag, got %d: %v ", flag.NArg(), args)
-		}
-		endpoint = fmt.Sprintf("execute-scripted-task/%s", flag.Args()[0]) // arg can be a ticket ID or the "test" keyword
-		var err error
-		if reqBody, err = getInputSource(datafilenameFlag); err != nil {
-			logrus.Fatal(err)
-
-		}
-	default:
-		logrus.Fatalf("runSpecial has been called when no special script has been provided")
-	}
-
-	logrus.Infof("mediator-client is sending request to backend end-point: %s", endpoint)
+	logrus.Debugf("mediator-client is sending request to backend end-point: %s", endpoint)
 	res := mediatorscript.RunResponse{}
 
 	if r, err := client.NewPOSTwithToken(endpoint, reqBody, "json"); err != nil {

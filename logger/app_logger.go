@@ -24,22 +24,29 @@ func InitAppLoggerWithConfigFile(configFilePath string) error {
 	return nil
 }
 
-func InitAppLogger(logLevel logrus.Level, logInStdOut bool, logInFile bool, withPid bool, withFunction bool, appendFile bool, withNanoSeconds bool, folder string, filename string) error {
+func InitAppLogger(defaultLogger bool, logLevel logrus.Level, logInStdOut bool, logInFile bool, withPid bool, withFunction bool, appendFile bool, withNanoSeconds bool, folder string, filename string) (*logrus.Logger, error) {
 	if !logInFile && !logInStdOut {
-		return fmt.Errorf("cannot init logger: choose log in Stdout or log in file or both")
+		return nil, fmt.Errorf("cannot init logger: choose log in Stdout or log in file or both")
 	}
 	pidFlag = withPid
 	functionFlag = withFunction
 	nanoSecondsFlag = withNanoSeconds
 	currentPid = os.Getpid()
 
+	var logger *logrus.Logger
+	if defaultLogger {
+		logger = logrus.StandardLogger()
+	} else {
+		logger = logrus.New()
+	}
+
 	if logInFile {
 		logfolder := ""
 		if folder == "" && filename == "" {
-			return fmt.Errorf("cannot init logger: no folder and file name")
+			return nil, fmt.Errorf("cannot init logger: no folder and file name")
 		}
 		if filename == "" {
-			return fmt.Errorf("cannot init logger: no file name")
+			return nil, fmt.Errorf("cannot init logger: no file name")
 		}
 		// Folder can be empty if filename is a full path file
 		if folder == "" {
@@ -49,26 +56,26 @@ func InitAppLogger(logLevel logrus.Level, logInStdOut bool, logInFile bool, with
 
 		logf, err := filepath.Abs(folder)
 		if err != nil {
-			return fmt.Errorf("cannot init logger: invalid folder path, %w", err)
+			return nil, fmt.Errorf("cannot init logger: invalid folder path, %w", err)
 		} else {
 			logfolder = logf
 		}
 		file, err := getLogfile(logfolder, filename, appendFile)
 		if err != nil {
-			return fmt.Errorf("cannot init logger: invalid file, %w", err)
+			return nil, fmt.Errorf("cannot init logger: invalid file, %w", err)
 		}
 		if logInStdOut {
-			logrus.SetOutput(io.MultiWriter(os.Stderr, file))
+			logger.SetOutput(io.MultiWriter(os.Stderr, file))
 		} else {
-			logrus.SetOutput(file)
+			logger.SetOutput(file)
 		}
 	} else if logInStdOut {
-		logrus.SetOutput(os.Stderr)
+		logger.SetOutput(os.Stderr)
 	}
-	logrus.SetReportCaller(true)
-	logrus.SetFormatter(new(DefaultLogFormatter))
-	logrus.SetLevel(logLevel)
-	return nil
+	logger.SetReportCaller(true)
+	logger.SetFormatter(new(DefaultLogFormatter))
+	logger.SetLevel(logLevel)
+	return logger, nil
 }
 
 type DefaultLogFormatter struct{}

@@ -726,3 +726,47 @@ func TestWFSettings_GetScriptsForTriggerAndStep(t *testing.T) {
 		})
 	}
 }
+
+func TestWFSettings_isValid(t *testing.T) {
+	type fields struct {
+		WFname string
+		WFid   int
+		Rules  RulesSlice
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr error
+	}{
+		{
+			name: "no wf name",
+			fields: fields{
+				WFname: "",
+				WFid:   10,
+				Rules:  []*Rule{},
+			},
+			wantErr: ErrNoWorkflowName,
+		},
+		{
+			name: "no wf ID",
+			fields: fields{
+				WFname: "no ID",
+				WFid:   0,
+				Rules:  []*Rule{},
+			},
+			wantErr: ErrNoWorkflowID,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &WFSettings{
+				WFname: tt.fields.WFname,
+				WFid:   tt.fields.WFid,
+				Rules:  tt.fields.Rules,
+			}
+			if err := w.isValid(); err != tt.wantErr {
+				t.Errorf("WFSettings.isValid() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

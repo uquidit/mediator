@@ -14,8 +14,7 @@ import (
 var (
 	URL                string
 	InsecureSkipVerify bool = false
-
-	rootCmd = &cobra.Command{
+	rootCmd                 = &cobra.Command{
 		Use:   "mediator",
 		Short: "A low-level CLI to manage Mediator back-end",
 		Long: `This CLI provides commands to manage scripts used by Mediator back-end. It includes:
@@ -29,7 +28,7 @@ var (
 			if URL == "" {
 				return fmt.Errorf("provided Back-End URL is empty")
 			}
-			apiclient.InitHelpers(URL, InsecureSkipVerify)
+			clicommands.BackendClient = apiclient.GetHelper(URL, InsecureSkipVerify)
 			return nil
 		},
 	}

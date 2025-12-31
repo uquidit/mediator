@@ -38,7 +38,7 @@ func selectScript(default_script *string) string {
 	}
 }
 
-func selectRule(rules mediatorsettings.RulesSlice) (index int, new bool, exit bool) {
+func selectRule(rules mediatorsettings.RulesSlice) (index int, new bool, exit bool, edit_desc bool) {
 	options := []console.Item{}
 	for i, s := range rules {
 		item := console.ListItem{
@@ -47,6 +47,8 @@ func selectRule(rules mediatorsettings.RulesSlice) (index int, new bool, exit bo
 		}
 		options = append(options, item)
 	}
+	options = append(options, console.ListItem{Label: "Edit description", ID: len(options)})
+	index_desc := len(options) - 1
 	options = append(options, console.ListItem{Label: "New rule", ID: len(options)})
 	index_new := len(options) - 1
 	options = append(options, console.ListItem{Label: "Exit", ID: len(options)})
@@ -54,18 +56,26 @@ func selectRule(rules mediatorsettings.RulesSlice) (index int, new bool, exit bo
 
 	var err error
 	for {
-		index, err = console.SelectFromItemList("\nDo you want to edit a rule or add a new one", options, &index_exit)
+		index, err = console.SelectFromItemList("\nDo you want to edit a rule, add a new one or edit description", options, &index_exit)
 		if err == nil {
 			switch index {
+			case index_desc:
+				edit_desc = true
+				new = false
+				exit = false
+				index = -1
 			case index_new:
+				edit_desc = false
 				new = true
 				exit = false
 				index = -1
 			case index_exit:
+				edit_desc = false
 				new = false
 				exit = true
 				index = -1
 			default:
+				edit_desc = false
 				new = false
 				exit = false
 			}
@@ -146,6 +156,9 @@ func getNewRule(steps []string) *mediatorsettings.Rule {
 	// select a script
 	setting.Script = selectScript(nil)
 
+	// get comment
+	setting.Comment, _ = console.GetText("Rule comment")
+
 	return &setting
 }
 
@@ -200,6 +213,8 @@ func editRule(rule *mediatorsettings.Rule, steps []string) bool {
 
 	// select a script
 	rule.Script = selectScript(&rule.Script)
+	// get comment
+	rule.Comment, _ = console.GetTextWithDefault("Rule comment", rule.Comment)
 	return false
 }
 

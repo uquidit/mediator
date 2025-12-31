@@ -17,13 +17,18 @@ func ReadWorkflowsSettings(filename string) (MediatorSettingsMap, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return MediatorSettingsMap{}, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrCannotReadSettingsFile, err)
+	}
+
+	// if file exists but is empty, return an empty settings map
+	if len(file) == 0 {
+		return MediatorSettingsMap{}, nil
 	}
 
 	data := MediatorSettingsMap{}
 	err = json.Unmarshal(file, &data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrCannotDecodeSettingsFile, err)
 	}
 
 	return data, nil
@@ -83,16 +88,23 @@ func DownloadSettingsFileFromSecurechange(download_script, filename string) erro
 
 	logrus.Infof("Download mediator-client settings from Securechange using command: /usr/bin/sudo %s %s", download_script, filename)
 	if err := cmd.Run(); err != nil {
+		var (
+			exit_code_msg string
+			msg           string
+		)
+
+		if exitError, ok := err.(*exec.ExitError); ok {
+			exit_code_msg = fmt.Sprintf(" Exit code is %d", exitError.ExitCode())
+		}
 
 		errmsg := stderr.String()
 		if errmsg != "" {
-			logrus.Warningf("Download mediator-client settings returned an error: %s", errmsg)
+			msg = fmt.Sprintf("download mediator-client settings script returned an error: %s.%s", errmsg, exit_code_msg)
+		} else {
+			msg = fmt.Sprintf("execution of download mediator-client settings script failed: %v.%s", err, exit_code_msg)
 		}
-
-		if exitError, ok := err.(*exec.ExitError); ok {
-			fmt.Printf("Exit code is %d\n", exitError.ExitCode())
-		}
-		return err
+		logrus.Warning(msg)
+		return errors.New(msg)
 	}
 	return nil
 }

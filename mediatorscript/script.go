@@ -6,11 +6,13 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 type Script struct {
@@ -93,14 +95,9 @@ func (s *Script) String() string {
 
 func (s *Script) Save() error {
 	var err error
-	if s.Fullpath == "" {
-		return ErrRegisterNoFilename
-	}
-	if s.Name == "" {
-		return ErrRegisterNoName
-	}
-	if s.Name == "test" {
-		return ErrRegisterNameNotAllowed
+
+	if err = s.checkScript(); err != nil {
+		return err
 	}
 
 	if s.Hash, err = s.computeHash(); err != nil {
@@ -113,6 +110,43 @@ func (s *Script) Save() error {
 
 	return save()
 }
+
+// Check script information is valid
+// Also check current process can run the script file
+func (s *Script) checkScript() error {
+	if s.Fullpath == "" {
+		return ErrRegisterNoFilename
+	}
+	if s.Name == "" {
+		return ErrRegisterNoName
+	}
+	if s.Name == "test" {
+		return ErrRegisterNameNotAllowed
+	}
+
+	// The following was copied from
+	// https://gitlab.com/StellarpowerGroupedProjects/tidbits/go/-/blob/main/CheckFileExecutable.go
+	fileInfo, err := os.Stat(s.Fullpath)
+	if err != nil {
+		return err
+	}
+	m := fileInfo.Mode()
+
+	if !((m.IsRegular()) || (uint32(m&fs.ModeSymlink) == 0)) || m.IsDir() {
+		return fmt.Errorf("%w: %s", ErrScriptFileIsNotNormal, s.Fullpath)
+	}
+	if uint32(m&0111) == 0 {
+		return fmt.Errorf("%w: %s", ErrScriptFileIsNotExecutable, s.Fullpath)
+	}
+	if unix.Access(s.Fullpath, unix.X_OK) != nil {
+		// ANSWER HERE: https://stackoverflow.com/questions/60128401/how-to-check-if-a-file-is-executable-in-go
+		return fmt.Errorf("%w: %s", ErrScriptFileIsNotExecutableByBack, s.Fullpath)
+	}
+
+	return nil
+
+}
+
 func (s *Script) Refresh() error {
 	var err error
 	logrus.Infof("Refreshing %s", s)
@@ -123,8 +157,15 @@ func (s *Script) Refresh() error {
 }
 
 func safeAdd(name string, item *Script) error {
-	if _, exist := allScripts[name]; exist {
-		return fmt.Errorf("%w: %s", ErrRegisterAlreadyExist, name)
+	if s, exist := allScripts[name]; exist {
+		// script with same name already. Is it same type?
+		// if so, it's kinda ok.
+		// so lets distinguish the 2 cases
+		if s.Type == item.Type {
+			return fmt.Errorf("%w: %s", ErrRegisterAlreadyExist, name)
+		} else {
+			return fmt.Errorf("%w: %s as %s", ErrRegisterAlreadyExistWithDifferentType, name, s.Type)
+		}
 
 	} else if item.Type == ScriptTrigger || IsEmpty(item.Type) {
 		// we can have several trigger scripts but only one of the other type

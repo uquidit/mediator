@@ -10,120 +10,122 @@ import (
 )
 
 var (
-	SCworkflows                      *scworkflow.Workflows
-	create_for_all                   bool
-	wf_name_flag                     string
-	list_triggers                    []string
-	New_wf_triggers                  scworkflow.WorkflowTriggers
 	MediatorSecurechangeAPICreateCmd = &cobra.Command{
 		Use:   "create",
 		Short: "Create a new SecurechangeAPI trigger configuration",
 		Args:  cobra.ExactArgs(0),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
-			if SCworkflows == nil {
-				fmt.Println("Get fresh list of workflows from SC...")
-				// send request to SC
-				SCworkflows, err = Manager.GetSecurechangeWorkflows(false)
-				if err != nil {
-					return err
-				}
-				fmt.Println("OK !")
-			}
-			return nil
-		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
-				err     error
-				wf_name string = wf_name_flag
-				wf_id   int
+				err               error
+				list_all_triggers []string
+				list_triggers     []string
+				New_wf_triggers   scworkflow.WorkflowTriggers
 			)
+			verbosity, _ := cmd.Flags().GetCount("verbose")
 
-			// a wf was provided. Is it in list?
-			if wf_name != "" {
-				// make sure wf is in list
-				found := false
-				for _, c := range SCworkflows.Workflows {
-					if c.Name == wf_name {
-						found = true
-						break
-					}
-				}
-				if !found {
-					fmt.Printf("[ERROR] No workflow named '%s' was found.\n", wf_name)
-					wf_name = ""
+			// get a list of WF from --workflow flag
+			// if list is empty, ask user to select a WF
+			wf_list := getWorkflowsFromFlag(cmd)
+
+			if len(wf_list) == 0 {
+				// select a workflow
+				if w, err := selectWorkflow("Select the workflow for which you want to create a trigger :"); err != nil {
+					return err
+				} else if w == nil {
+					// exit
+					return nil
+				} else {
+					// add selected WF to list
+					wf_list = append(wf_list, w)
 				}
 			}
 
-			// select a workflow if needed
-			if wf_name == "" {
-				items := []string{}
-				for _, c := range SCworkflows.Workflows {
-					items = append(items, c.Name)
-				}
-				for {
-					if wf_name, err = console.SelectFromList("Select the workflow for which you want to create a trigger :", items, nil); err == nil && wf_name != "" {
-						for _, c := range SCworkflows.Workflows {
-							if c.Name == wf_name {
-								wf_id = c.Id
-							}
-						}
-						break
-					}
+			if verbosity > 0 {
+				fmt.Println("Triggers will be created for following workflows:")
+				for _, w := range wf_list {
+					fmt.Print(" - ")
+					fmt.Println(w.Name)
 				}
 			}
 
 			for i := 1; i < int(scworkflow.LAST_TRIGGER); i++ {
 				t := scworkflow.SecurechangeTrigger(i)
-				list_triggers = append(list_triggers, t.String())
+				list_all_triggers = append(list_all_triggers, t.String())
 			}
 
-			if !create_for_all {
+			if !all_triggers {
 				var tg string
 				// select a trigger
 				for {
-					if tg, err = console.SelectFromList("Select a trigger :", list_triggers, nil); err == nil && tg != "" {
+					if tg, err = console.SelectFromList("Select a trigger :", list_all_triggers, nil); err == nil && tg != "" {
 						break
 					}
 				}
 				list_triggers = []string{tg}
+			} else {
+				list_triggers = list_all_triggers
 			}
 
-			New_wf_triggers.WorkflowTriggers.WorkflowTrigger = make([]scworkflow.WorkflowTrigger, len(list_triggers))
-			for i, tg_name := range list_triggers {
-				// create data set
-				tg_slug := scworkflow.GetTriggerFromString(tg_name).Slug()
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Name = fmt.Sprintf("%s %s", wf_name, tg_slug)
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Executer.Type = "ScriptDTO"
-				// swap Arguments and Path fields to fix a silly Securechange bug
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Executer.Arguments = fmt.Sprintf("/opt/tufin/data/securechange/scripts/mediator-client-%s.sh", strings.ToLower(tg_name))
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Executer.Path = wf_name
-
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers = make([]scworkflow.WorkflowTriggerGroup, 1)
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers[0].Name = fmt.Sprintf("trigger %s", tg_name)
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers[0].Workflow.Name = wf_name
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers[0].Workflow.ParentWorkflowID = wf_id
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers[0].Events = make([]string, 1)
-				New_wf_triggers.WorkflowTriggers.WorkflowTrigger[i].Triggers[0].Events[0] = tg_slug
+			if verbosity > 0 {
+				fmt.Println("Following triggers will be created for above workflows:")
+				for _, t := range list_triggers {
+					fmt.Print(" - ")
+					fmt.Println(t)
+				}
 			}
 
-			return nil
-		},
+			// get list of existing triggers so we don't create duplicates
+			if verbosity > 0 {
+				fmt.Print("Getting list of existing triggers...")
+			}
+			existing_conf, err := Manager.GetSecurechangeWorkflowTriggers()
+			if err != nil {
+				return err
+			}
+			if verbosity > 0 {
+				fmt.Printf("  %d existing triggers.\n", len(existing_conf.WorkflowTriggers.WorkflowTrigger))
+			}
+			New_wf_triggers.WorkflowTriggers.WorkflowTrigger = make([]*scworkflow.WorkflowTrigger, 0)
+			for _, w := range wf_list {
+				wf_name := w.Name
+				for _, tg_name := range list_triggers {
+					// create data set
+					tg_slug := scworkflow.GetTriggerFromString(tg_name).Slug()
+					new_trigger := scworkflow.WorkflowTrigger{}
+					new_trigger.Name = fmt.Sprintf("%s %s", wf_name, tg_slug)
+					new_trigger.Executer.Type = "ScriptDTO"
+					new_trigger.Executer.Arguments = wf_name
+					new_trigger.Executer.Path = fmt.Sprintf("/opt/tufin/data/securechange/scripts/mediator-client-%s.sh", strings.ReplaceAll(strings.ToLower(tg_name), " ", "-"))
 
-		PostRunE: func(cmd *cobra.Command, args []string) error {
+					new_trigger_group := scworkflow.WorkflowTriggerGroup{}
+					new_trigger_group.Name = fmt.Sprintf("trigger %s", tg_name)
+					new_trigger_group.Workflow.Name = wf_name
+					// new_trigger_group.Workflow.ParentWorkflowID = wf_id
+					new_trigger_group.Events = make([]string, 1)
+					new_trigger_group.Events[0] = tg_slug
+
+					new_trigger.Triggers = make([]*scworkflow.WorkflowTriggerGroup, 1)
+					new_trigger.Triggers[0] = &new_trigger_group
+
+					if !new_trigger.IsTriggerAlreadyInList(existing_conf.WorkflowTriggers.WorkflowTrigger) {
+						New_wf_triggers.WorkflowTriggers.WorkflowTrigger = append(New_wf_triggers.WorkflowTriggers.WorkflowTrigger, &new_trigger)
+					} else {
+						fmt.Printf("Similar trigger already exists in Securechange configuration: %s\n", new_trigger.Name)
+					}
+				}
+			}
+			if len(New_wf_triggers.WorkflowTriggers.WorkflowTrigger) == 0 {
+				fmt.Println("Nothing to do.")
+				return nil
+			}
+			// send creation request to SC
 			if err := Manager.CreateSecurechangeWorkflowTriggers(&New_wf_triggers); err != nil {
 				return err
 			} else {
-				fmt.Printf("SecurechangeAPI trigger was created for trigger(s) %v.\n", list_triggers)
+				fmt.Printf("%d SecurechangeAPI triggers were created.\n", len(New_wf_triggers.WorkflowTriggers.WorkflowTrigger))
 			}
 			return nil
 		},
 	}
 )
-
-func init() {
-	MediatorSecurechangeAPICreateCmd.Flags().BoolVar(&create_for_all, "all-triggers", false, "Create SecureChangeAPI trigger conf for all triggers.")
-	MediatorSecurechangeAPICreateCmd.Flags().StringVarP(&wf_name_flag, "workflow", "w", "", "Create SecureChangeAPI trigger conf for the provided workflow.")
-}

@@ -2,7 +2,6 @@ package clicommands
 
 import (
 	"fmt"
-	"uqtu/mediator/apiclient"
 	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
@@ -31,6 +30,7 @@ Add new script using the "script register" command.`,
 					mediatorscript.ScriptCondition,
 					mediatorscript.ScriptTask,
 					mediatorscript.ScriptAssignment,
+					mediatorscript.RiskAnalysis,
 				} {
 					fmt.Printf("\n* %s: %d\n", t, len(list_by_type[t]))
 					for _, s := range list_by_type[t] {
@@ -71,6 +71,7 @@ func init() {
 		mediatorscript.ScriptCondition,
 		mediatorscript.ScriptTask,
 		mediatorscript.ScriptAssignment,
+		mediatorscript.RiskAnalysis,
 	}
 	for _, t := range interactiveTypes {
 		c = getInteractiveScriptCmd(t)
@@ -84,7 +85,7 @@ type scriptListByType map[mediatorscript.ScriptType][]*mediatorscript.Script
 
 func getAllScriptNamesByType() (scriptListByType, error) {
 	var list []*mediatorscript.Script
-	if _, err := apiclient.RunGETwithToken("", "json", &list); err != nil {
+	if _, err := BackendClient.RunGETwithToken("", "json", &list); err != nil {
 		return nil, err
 	}
 

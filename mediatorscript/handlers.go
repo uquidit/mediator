@@ -6,6 +6,7 @@ import (
 
 func AddMediatorscriptAPI(g *echo.Group) {
 	g.GET("", GetAll)
+	g.GET("/:slug", GetAllByType)
 
 	g.POST("/register", RegisterScript)
 
@@ -21,6 +22,7 @@ func AddMediatorscriptAPI(g *echo.Group) {
 	g.POST("/execute-scripted-condition/:id", ExecuteScriptedCondition)
 	g.POST("/execute-scripted-task/:id", ExecuteScriptedTask)
 	g.POST("/execute-pre-assignment", ExecutePreAssignment)
+	g.POST("/execute-risk-analysis", ExecuteRiskAnalysis)
 
 	g.POST("/test-all", TestAllScripts)
 	g.POST("/test/:slug/:script", TestScript)

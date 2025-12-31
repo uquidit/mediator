@@ -58,11 +58,11 @@ func main() {
 
 	// init traditional logger
 	if Configuration.Server.Log.Error == "" || Configuration.Server.Log.Error == "-" {
-		if err := logger.InitAppLogger(logrus.WarnLevel, true, false, false, true, false, true, "", ""); err != nil {
+		if _, err := logger.InitAppLogger(true, logrus.WarnLevel, true, false, false, true, false, true, "", ""); err != nil {
 			logrus.Fatalf("error while initializing logger: %v", err)
 		}
 	} else {
-		if err := logger.InitAppLogger(logrus.WarnLevel, false, true, false, true, true, true, "", Configuration.Server.Log.Error); err != nil {
+		if _, err := logger.InitAppLogger(true, logrus.WarnLevel, false, true, false, true, true, true, "", Configuration.Server.Log.Error); err != nil {
 			logrus.Fatalf("error while initializing logger: %v", err)
 		}
 	}
