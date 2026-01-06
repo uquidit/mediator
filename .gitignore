@@ -1,4 +1,5 @@
-Makefile
+bin/*
+package/*
 cmd/mediator-client/mediator.log
 cmd/mediator-client/mediator-client.yml
 cmd/mediator-client/mediator-client
