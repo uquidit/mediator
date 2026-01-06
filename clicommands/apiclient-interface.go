@@ -1,6 +1,6 @@
 package clicommands
 
-import "uqtu/mediator/apiclient"
+import "mediator/apiclient"
 
 var (
 	BackendClient *apiclient.APIclientHelper

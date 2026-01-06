@@ -66,11 +66,11 @@ They can all be set at build time using the `--ldflags` build flag with the `-X`
 Example:
 ```sh
 $ go build --ldflags="\
--X 'uqtu/mediator/mediatorscript.salt=Hello' \
--X 'uqtu/mediator/mediatorscript.pepper=World' \
--X 'uqtu/mediator/mediatorscript.secretKey=ThisIsMySecret' \
--X 'uqtu/mediator/totp.secretMS1=Lorem' \
--X 'uqtu/mediator/totp.secretMS2=Ipsum' \
+-X 'mediator/mediatorscript.salt=Hello' \
+-X 'mediator/mediatorscript.pepper=World' \
+-X 'mediator/mediatorscript.secretKey=ThisIsMySecret' \
+-X 'mediator/totp.secretMS1=Lorem' \
+-X 'mediator/totp.secretMS2=Ipsum' \
 " .
 ```
 

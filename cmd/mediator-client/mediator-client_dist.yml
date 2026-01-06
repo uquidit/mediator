@@ -1,5 +1,5 @@
 configuration:
-  backend_url: https://UQTU_DOMAIN/v1/otp/mediatorscript
+  backend_url: https://MEDIATOR_SERVER_HOST/v1/otp/mediatorscript
   log:
     file: /var/log/mediator-client.log
     level: info

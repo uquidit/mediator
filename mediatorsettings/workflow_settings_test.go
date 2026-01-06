@@ -1,9 +1,9 @@
 package mediatorsettings
 
 import (
+	"mediator/scworkflow"
 	"slices"
 	"testing"
-	"uqtu/mediator/scworkflow"
 
 	"github.com/go-test/deep"
 )

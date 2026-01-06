@@ -26,7 +26,7 @@ func ReadConf(config_name string, config any, defaults map[string]any) error {
 	viper.SetConfigType("yaml")                                  // REQUIRED if the config file does not have the extension in the name
 	viper.AddConfigPath("../.")                                  // path to look for the config file in
 	viper.AddConfigPath(".")                                     // look for config in the working directory
-	viper.AddConfigPath("/opt/uquidit.co/conf")                  // path to look for the config file in
+	viper.AddConfigPath("/opt/mediator/conf")                    // path to look for the config file in
 	viper.AddConfigPath("/opt/tufin/data/securechange/scripts/") // path to look for the config file in
 
 	// Find and read the config file

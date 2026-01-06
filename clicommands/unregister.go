@@ -2,8 +2,8 @@ package clicommands
 
 import (
 	"fmt"
+	"mediator/mediatorscript"
 	"net/http"
-	"uqtu/mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
 )

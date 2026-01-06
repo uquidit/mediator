@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"uqtu/mediator/mediatorscript"
+	"mediator/mediatorscript"
 
 	"github.com/sirupsen/logrus"
 )

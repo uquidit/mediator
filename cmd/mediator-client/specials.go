@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"mediator/apiclient"
+	"mediator/mediatorscript"
+	"mediator/totp"
 	"os"
-	"uqtu/mediator/apiclient"
-	"uqtu/mediator/mediatorscript"
-	"uqtu/mediator/totp"
 
 	"github.com/sirupsen/logrus"
 )

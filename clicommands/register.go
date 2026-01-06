@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"uqtu/mediator/mediatorscript"
+	"mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
 )

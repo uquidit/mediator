@@ -6,17 +6,17 @@ import (
 	"os"
 	"regexp"
 
-	"uqtu/mediator/logger"
-	"uqtu/mediator/mediatorscript"
-	"uqtu/mediator/mediatorsettings"
-	"uqtu/mediator/totp"
+	"mediator/logger"
+	"mediator/mediatorscript"
+	"mediator/mediatorsettings"
+	"mediator/totp"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sirupsen/logrus"
 )
 
-// @title UQTU Back-end API
+// @title Mediator Back-end API
 // @version 1.0
 // @description UquidIT.co back-end server
 // @termsOfService http://swagger.io/terms/

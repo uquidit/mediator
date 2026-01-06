@@ -9,7 +9,6 @@ cmd/mediator-server/mediator-server
 cmd/mediator-server/__debug_bin
 
 cmd/mediator-cli/mediator-cli
-cmd/mediator-client/uquidit_mediator.log
 cmd/mediator-cli/mediator-client.yml
 
 .vscode/*

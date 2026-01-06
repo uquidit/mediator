@@ -1,6 +1,6 @@
 package mediatorsettings
 
-import "uqtu/mediator/scworkflow"
+import "mediator/scworkflow"
 
 type MediatorSettings []*WFSettings
 

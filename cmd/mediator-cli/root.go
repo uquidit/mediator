@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"mediator/apiclient"
+	"mediator/clicommands"
+	"mediator/clicommands/securechangeapi"
 	"os"
-	"uqtu/mediator/apiclient"
-	"uqtu/mediator/clicommands"
-	"uqtu/mediator/clicommands/securechangeapi"
 
 	"github.com/spf13/cobra"
 )

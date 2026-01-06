@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"mediator/mediatorscript"
 	"os"
-	"uqtu/mediator/mediatorscript"
 
 	"github.com/sirupsen/logrus"
 )

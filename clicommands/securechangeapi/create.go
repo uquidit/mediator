@@ -2,9 +2,9 @@ package securechangeapi
 
 import (
 	"fmt"
+	"mediator/console"
+	"mediator/scworkflow"
 	"strings"
-	"uqtu/mediator/console"
-	"uqtu/mediator/scworkflow"
 
 	"github.com/spf13/cobra"
 )

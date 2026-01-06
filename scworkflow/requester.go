@@ -2,7 +2,7 @@ package scworkflow
 
 import (
 	"fmt"
-	"uqtu/mediator/apiclient"
+	"mediator/apiclient"
 )
 
 type Requester interface {

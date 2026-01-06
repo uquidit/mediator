@@ -1,7 +1,7 @@
 package main
 
 import (
-	"uqtu/mediator/configparser"
+	"mediator/configparser"
 
 	"github.com/sirupsen/logrus"
 )

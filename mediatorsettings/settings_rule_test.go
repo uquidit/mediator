@@ -2,8 +2,8 @@ package mediatorsettings
 
 import (
 	"errors"
+	"mediator/mediatorscript"
 	"testing"
-	"uqtu/mediator/mediatorscript"
 )
 
 func mock_getScriptByName(name string) (*mediatorscript.Script, error) {

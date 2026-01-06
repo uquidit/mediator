@@ -3,7 +3,7 @@ package mediatorsettings
 import (
 	"errors"
 	"fmt"
-	"uqtu/mediator/scworkflow"
+	"mediator/scworkflow"
 
 	"github.com/labstack/echo/v4"
 )

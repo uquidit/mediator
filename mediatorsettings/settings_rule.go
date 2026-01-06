@@ -2,8 +2,8 @@ package mediatorsettings
 
 import (
 	"fmt"
-	"uqtu/mediator/mediatorscript"
-	"uqtu/mediator/scworkflow"
+	"mediator/mediatorscript"
+	"mediator/scworkflow"
 )
 
 // Stores a list of step <=> script association

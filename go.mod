@@ -1,4 +1,4 @@
-module uqtu/mediator
+module mediator
 
 go 1.25
 

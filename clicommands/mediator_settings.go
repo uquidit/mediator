@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mediator/console"
+	"mediator/mediatorsettings"
+	"mediator/scworkflow"
 	"net/url"
-	"uqtu/mediator/console"
-	"uqtu/mediator/mediatorsettings"
-	"uqtu/mediator/scworkflow"
 
 	"github.com/spf13/cobra"
 )

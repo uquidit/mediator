@@ -1,8 +1,8 @@
 package securechangeapi
 
 import (
-	"uqtu/mediator/console"
-	"uqtu/mediator/scworkflow"
+	"mediator/console"
+	"mediator/scworkflow"
 )
 
 type SecurchangeAPIManager interface {

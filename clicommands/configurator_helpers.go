@@ -2,10 +2,10 @@ package clicommands
 
 import (
 	"fmt"
-	"uqtu/mediator/console"
-	"uqtu/mediator/mediatorscript"
-	"uqtu/mediator/mediatorsettings"
-	"uqtu/mediator/scworkflow"
+	"mediator/console"
+	"mediator/mediatorscript"
+	"mediator/mediatorsettings"
+	"mediator/scworkflow"
 )
 
 func GetTriggerScripts() ([]string, error) {

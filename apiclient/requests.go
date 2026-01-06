@@ -115,7 +115,7 @@ func (req *Request) RunWithoutDecode() (io.Reader, error) {
 func (req *Request) decodeError(resp_body []byte) error {
 	// let's see if body is meaningful
 	// can we unmarshall body in an error struct.
-	// this is very specific to uQuidIT API
+	// this is very specific to MediatorServer API
 	uqt_err := struct {
 		Error   string `json:"error"`
 		Message string `json:"message"`

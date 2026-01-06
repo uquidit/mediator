@@ -2,7 +2,7 @@ package mediatorsettings
 
 import (
 	"fmt"
-	"uqtu/mediator/scworkflow"
+	"mediator/scworkflow"
 )
 
 type WFSettings struct {

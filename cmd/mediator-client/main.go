@@ -12,15 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"uqtu/mediator/mediatorscript"
-	"uqtu/mediator/mediatorsettings"
-	"uqtu/mediator/scworkflow"
-	"uqtu/mediator/totp"
+	"mediator/mediatorscript"
+	"mediator/mediatorsettings"
+	"mediator/scworkflow"
+	"mediator/totp"
 
-	"uqtu/mediator/configparser"
+	"mediator/configparser"
 
-	"uqtu/mediator/apiclient"
-	"uqtu/mediator/logger"
+	"mediator/apiclient"
+	"mediator/logger"
 
 	"github.com/sirupsen/logrus"
 )

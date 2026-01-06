@@ -2,7 +2,7 @@
 
 package apiclient
 
-import "uqtu/mediator/totp"
+import "mediator/totp"
 
 func NewClientWithOTP(url_prefix string, insecure_skip_verify bool) (*Client, error) {
 

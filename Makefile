@@ -21,11 +21,11 @@ tests:
 	go test -race -ldflags "\
 		-extldflags '-static' \
 		-X 'main.Version=${version}' \
-		-X 'uqtu/mediator/mediatorscript.salt=${salt}' \
-		-X 'uqtu/mediator/mediatorscript.pepper=${pepper}' \
-		-X 'uqtu/mediator/mediatorscript.secretKey=${secretkey}' \
-		-X 'uqtu/mediator/totp.secretMS1=${secretms1}' \
-		-X 'uqtu/mediator/totp.secretMS2=${secretms2}' \
+		-X 'mediator/mediatorscript.salt=${salt}' \
+		-X 'mediator/mediatorscript.pepper=${pepper}' \
+		-X 'mediator/mediatorscript.secretKey=${secretkey}' \
+		-X 'mediator/totp.secretMS1=${secretms1}' \
+		-X 'mediator/totp.secretMS2=${secretms2}' \
 		" `go list ./... | grep -v /vendor/ | grep -v /clones/`
 
 build:
@@ -34,11 +34,11 @@ build:
 		go build -race -ldflags "\
 			-extldflags '-static' \
 			-X 'main.Version=${version}' \
-			-X 'uqtu/mediator/mediatorscript.salt=${salt}' \
-			-X 'uqtu/mediator/mediatorscript.pepper=${pepper}' \
-			-X 'uqtu/mediator/mediatorscript.secretKey=${secretkey}' \
-			-X 'uqtu/mediator/totp.secretMS1=${secretms1}' \
-			-X 'uqtu/mediator/totp.secretMS2=${secretms2}' \
+			-X 'mediator/mediatorscript.salt=${salt}' \
+			-X 'mediator/mediatorscript.pepper=${pepper}' \
+			-X 'mediator/mediatorscript.secretKey=${secretkey}' \
+			-X 'mediator/totp.secretMS1=${secretms1}' \
+			-X 'mediator/totp.secretMS2=${secretms2}' \
 		" -o "./bin/$${elt}"   "./cmd/$${elt}" ; \
 	done
 

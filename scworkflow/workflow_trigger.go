@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mediator/apiclient"
 	"slices"
 	"strings"
-	"uqtu/mediator/apiclient"
 )
 
 type WorkflowTriggers struct {

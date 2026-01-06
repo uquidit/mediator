@@ -2,8 +2,8 @@ package clicommands
 
 import (
 	"fmt"
+	"mediator/mediatorscript"
 	"strings"
-	"uqtu/mediator/mediatorscript"
 )
 
 func listScripts(script_type mediatorscript.ScriptType) error {

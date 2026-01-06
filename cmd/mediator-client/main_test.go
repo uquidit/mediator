@@ -1,9 +1,9 @@
 package main
 
 import (
+	"mediator/scworkflow"
 	"reflect"
 	"testing"
-	"uqtu/mediator/scworkflow"
 )
 
 func Test_checkArgumentsAndGetTrigger(t *testing.T) {

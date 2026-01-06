@@ -2,7 +2,7 @@ package clicommands
 
 import (
 	"fmt"
-	"uqtu/mediator/mediatorscript"
+	"mediator/mediatorscript"
 
 	"github.com/spf13/cobra"
 )
@@ -13,7 +13,7 @@ var (
 		Short: "List all trigger scripts mediator-client can use.",
 		Long: `Trigger scripts are the scripts called by the mediator-client when a ticket reaches a given step.
 
-There can be as many trigger scripts as needed. They need to be associated to an existing workflow step via UQTU front-end.
+There can be as many trigger scripts as needed. They need to be associated to an existing workflow step.
 
 SecureChange API also needs to be configured so mediator-client is called when actions are triggered for a ticket.`,
 		Args: cobra.ExactArgs(0),

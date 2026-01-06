@@ -1,0 +1,2 @@
+[INFO] 2023/06/05 18:15:18 mediator-client could not find JSON file '/home/miguel/dev/uqtu/mediator/cmd/mediator-client/mediator-client.json'. Using YAML file.
+[ERROR] 2023/06/05 18:15:18 Back-end URL is empty. Stop.

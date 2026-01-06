@@ -241,7 +241,6 @@ func (c *Client) newWithBody(method string, url_suffix string, body io.Reader, c
 			req.SetHeader("Accept", "application/xml")
 			// do NOT set Content-Type header for XML request
 			// Securetrack rejects it for some reason
-			// cf https://gitlab.uquidit.corp/uqtu/mediator/-/issues/14 and https://gitlab.uquidit.corp/uqtu/back-end/-/issues/123
 			// req.SetHeader("Content-Type", "application/xml")
 		}
 	}
