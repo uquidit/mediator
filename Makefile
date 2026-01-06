@@ -1,9 +1,9 @@
 # Set the secrets
-salt := "LEKOI3IBQ476CD335QYTKNXUPDFNPIQR"
-pepper := "J3KCJGE3ISR2V2Y56SRVPI5S7F5WZQB3"
-secretkey := "J23RBAUAWAGBT2UYABUXG5TUVSXWNYSM"
-secretms1 := "NAV4AE5E655CN6VSR6EPW4ALDITCTNWS"
-secretms2 := "RSWB5UZBPVOBQZ2JDY6SNYJ4LB432N3I"
+salt := "Hello"
+pepper := "World"
+secretkey := "ThisIsMySecret"
+secretms1 := "Lorem"
+secretms2 := "Ipsum"
 
 build: version := dev
 tests: version := test

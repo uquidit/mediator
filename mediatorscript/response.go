@@ -28,13 +28,13 @@ type SyncRunResponsesMap map[string]*SyncRunResponse
 
 func (rr *RunResponse) SendResponse(c echo.Context) error {
 	if rr.err != nil {
-		logrus.Warningf(rr.err.Error())
+		logrus.Warning(rr.err.Error())
 		rr.Error = rr.err.Error()
 	}
 	for _, r := range rr.RunResults {
 		if r.internalError != nil {
 			r.InternalError = r.internalError.Error()
-			logrus.Warningf(r.InternalError)
+			logrus.Warning(r.InternalError)
 		}
 		if r.scriptError != nil {
 			r.ScriptError = r.scriptError.Error()
